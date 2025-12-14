@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ZSC科技丨ZSC-GLM4.5</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* -----------------------------------------------------------
+           sb想看我代码？？？
+           ----------------------------------------------------------- */
+        :root {
+            /* 调色板：深空与霓虹 */
+            --void-bg: #050505;
+            --void-panel: rgba(20, 20, 20, 0.6);
+            --void-border: rgba(255, 255, 255, 0.08);
+            
+            --primary: #6366f1;
+            --primary-gradient: linear-gradient(135deg, #6366f1, #a855f7);
+            --primary-glow: rgba(99, 102, 241, 0.4);
+            
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            
+            /* 物理动效曲线 - 极度丝滑 */
+            --ease-elastic: cubic-bezier(0.68, -0.6, 0.32, 1.6);
+            --ease-expo: cubic-bezier(0.19, 1, 0.22, 1);
+            
+            --glass: blur(20px) saturate(180%);
+            
+            /* ZSC动画变量 */
+            --zsc-primary-bg: #0a0a12;
+            --zsc-accent-color: #00e5ff;
+            --zsc-text-primary: #ffffff;
+            --zsc-transition-fast: 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            
+            /* 高级毛玻璃效果 */
+            --glass-ultra: blur(40px) saturate(300%) brightness(1.2);
+            --glass-light: blur(30px) saturate(250%) brightness(1.3);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+
+        /* 全局重置 */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        
+        html {
+            scroll-behavior: smooth;
+            height: 100%;
+        }
+        
+        body {
+            margin: 0; padding: 0;
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: var(--void-bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+            position: relative;
+            height: 100%;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        /* 防止入场动画期间滚动 */
+        body.no-scroll {
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        /* -----------------------------------------------------------
+           📢 悬浮公告样式 - 高级毛玻璃版
+           ----------------------------------------------------------- */
+        .announcement-bar {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 450px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: var(--glass-ultra);
+            -webkit-backdrop-filter: var(--glass-ultra);
+            border: var(--glass-border);
+            border-radius: 24px;
+            padding: 20px 24px;
+            z-index: 999;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.1),
+                0 0 40px rgba(99, 102, 241, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            animation: announcementSlideIn 0.8s var(--ease-expo) forwards;
+            opacity: 0;
+            transform: translateX(-50%) translateY(-30px);
+            transition: all 0.4s var(--ease-expo);
+            overflow: hidden;
+        }
+        
+        .announcement-bar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
+                radial-gradient(circle at 80% 70%, rgba(168, 85, 247, 0.08) 0%, transparent 60%);
+            z-index: -1;
+            border-radius: 24px;
+            pointer-events: none;
+        }
+        
+        .announcement-bar::after {
+            content: '';
+            position: absolute;
+            top: 1px;
+            left: 1px;
+            right: 1px;
+            bottom: 1px;
+            border-radius: 23px;
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.15) 0%, 
+                rgba(255, 255, 255, 0.05) 50%, 
+                rgba(255, 255, 255, 0.1) 100%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        .announcement-bar.hidden {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-40px);
+            pointer-events: none;
+        }
+        
+        .announcement-content {
+            flex: 1;
+            position: relative;
+        }
+        
+        .announcement-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .announcement-icon {
+            font-size: 1.3rem;
+            color: var(--primary);
+            text-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+            animation: bell-shake 4s infinite;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        }
+        
+        .announcement-text {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.95);
+            line-height: 1.5;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        
+        .announcement-text div {
+            margin-bottom: 6px;
+            position: relative;
+            padding-left: 16px;
+            display: flex;
+            align-items: center;
+            min-height: 24px;
+        }
+        
+        .announcement-text div::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            background: linear-gradient(135deg, var(--primary), #a855f7);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+        
+        /* 特别醒目的关闭按钮 */
+        .announcement-close {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1.5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            color: #ffffff;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s var(--ease-expo);
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 
+                0 4px 12px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+        
+        .announcement-close::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.3) 0%, 
+                rgba(255, 255, 255, 0.1) 100%);
+            border-radius: 50%;
+            z-index: -1;
+        }
+        
+        .announcement-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.15) rotate(90deg);
+            box-shadow: 
+                0 6px 20px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4),
+                0 0 20px rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+        }
+        
+        .announcement-close:active {
+            transform: scale(0.95) rotate(90deg);
+            transition: all 0.1s ease;
+        }
+        
+        .announcement-close i {
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        @keyframes announcementSlideIn {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-30px) scale(0.95);
+            }
+            70% {
+                opacity: 0.8;
+                transform: translateX(-50%) translateY(5px) scale(1.02);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0) scale(1);
+            }
+        }
+        
+        @keyframes bell-shake {
+            0%, 92%, 100% {
+                transform: rotate(0);
+            }
+            94% {
+                transform: rotate(-12deg);
+            }
+            96% {
+                transform: rotate(12deg);
+            }
+            98% {
+                transform: rotate(-8deg);
+            }
+        }
+        
+        /* 微光动画 */
+        @keyframes shimmer {
+            0% {
+                background-position: -200% center;
+            }
+            100% {
+                background-position: 200% center;
+            }
+        }
+        
+        /* -----------------------------------------------------------
+           🚀 ZSC科技新入场动画 - 流畅液态动画
+           ----------------------------------------------------------- */
+        /* SVG Filter for the "Gooey" liquid effect */
+        svg.filter-svg {
+            position: absolute;
+            width: 0;
+            height: 0;
+            top: 0;
+            left: 0;
+            z-index: -9999;
+        }
+        
+        /* 新入场动画容器 */
+        .zsc-new-entry-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--void-bg);
+            z-index: 1002;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            transition: opacity 1s ease, visibility 1s ease;
+        }
+        
+        .zsc-new-entry-animation.hidden {
+            opacity: 0;
+            pointer-events: none;
+            visibility: hidden;
+        }
+        
+        /* 背景装饰 */
+        .zsc-new-bg-gradient {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, 
+                rgba(10, 10, 18, 1) 0%, 
+                rgba(5, 5, 10, 1) 100%);
+            z-index: -2;
+        }
+        
+        /* 动画容器 */
+        .zsc-new-loader-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            filter: url('#goo');
+            margin-bottom: 40px;
+        }
+        
+        /* 核心动画光点 */
+        .zsc-new-orb {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            mix-blend-mode: screen;
+            opacity: 0.9;
+            filter: blur(8px);
+            animation: zsc-new-orb-move 4s infinite cubic-bezier(0.65, 0, 0.35, 1);
+            box-shadow: 0 0 30px currentColor;
+        }
+        
+        .zsc-new-orb:nth-child(1) {
+            background: var(--primary);
+            color: var(--primary);
+            animation-delay: 0s;
+        }
+        
+        .zsc-new-orb:nth-child(2) {
+            background: #a855f7;
+            color: #a855f7;
+            animation-delay: -0.5s;
+        }
+        
+        .zsc-new-orb:nth-child(3) {
+            background: var(--zsc-accent-color);
+            color: var(--zsc-accent-color);
+            animation-delay: -1s;
+        }
+        
+        /* 文字容器 */
+        .zsc-new-text-container {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            opacity: 0;
+            animation: zsc-new-text-breathe 4s infinite cubic-bezier(0.65, 0, 0.35, 1);
+            pointer-events: none;
+            margin-bottom: 30px;
+        }
+        
+        .zsc-new-brand-name {
+            font-size: 3.5rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, 
+                var(--primary) 0%, 
+                #a855f7 50%, 
+                var(--zsc-accent-color) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            display: inline-block;
+            text-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
+            margin-bottom: 10px;
+        }
+        
+        .zsc-new-brand-sub {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            opacity: 0.7;
+        }
+        
+        /* 进度指示器 */
+        .zsc-new-progress-container {
+            width: 200px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 20px;
+            overflow: hidden;
+            position: relative;
+            opacity: 0;
+            animation: zsc-new-fadeIn 1s forwards 1.5s;
+            z-index: 20;
+        }
+        
+        .zsc-new-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, 
+                var(--primary), 
+                #a855f7, 
+                var(--zsc-accent-color));
+            border-radius: 2px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+        
+        /* 跳过按钮 */
+        .zsc-new-skip-btn {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #a0a0b0;
+            padding: 10px 20px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s var(--ease-expo);
+            z-index: 3;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        
+        .zsc-new-skip-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+        }
+        
+        /* 新动画关键帧 */
+        @keyframes zsc-new-orb-move {
+            0% {
+                transform: rotate(0deg) translate(0, 0) scale(1);
+            }
+            25% {
+                transform: rotate(120deg) translate(80px, 0) scale(0.6);
+            }
+            50% {
+                transform: rotate(240deg) translate(0, 0) scale(1.4);
+            }
+            75% {
+                transform: rotate(360deg) translate(-80px, 0) scale(0.6);
+            }
+            100% {
+                transform: rotate(480deg) translate(0, 0) scale(1);
+            }
+        }
+        
+        @keyframes zsc-new-text-breathe {
+            0%, 20% {
+                opacity: 0;
+                transform: scale(0.9) translateY(10px);
+                filter: blur(10px);
+            }
+            45%, 55% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+                filter: blur(0px);
+            }
+            80%, 100% {
+                opacity: 0;
+                transform: scale(1.1) translateY(-10px);
+                filter: blur(5px);
+            }
+        }
+        
+        @keyframes zsc-new-fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+        
+        /* -----------------------------------------------------------
+           🌆 背景：噪点 + 动态极光
+           ----------------------------------------------------------- */
+        .ambient-bg {
+            position: fixed; inset: 0; z-index: -1;
+            background: radial-gradient(circle at 50% -20%, #1e1b4b, #000);
+        }
+        
+        .ambient-bg::after {
+            content: ""; position: absolute; inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        .aurora {
+            position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: conic-gradient(from 0deg at 50% 50%, rgba(99, 102, 241, 0.1), transparent 40%, rgba(168, 85, 247, 0.1) 60%, transparent 100%);
+            animation: aurora-spin 20s linear infinite;
+            filter: blur(80px);
+            opacity: 0.6;
+        }
+
+        /* -----------------------------------------------------------
+           🧊 UI 组件：玻璃态卡片
+           ----------------------------------------------------------- */
+        .app-wrapper {
+            width: 100%; max-width: 1200px; height: 100%;
+            position: relative;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        .app-wrapper.visible {
+            opacity: 1;
+        }
+
+        /* 登录面板 */
+        .login-panel {
+            width: 90%; max-width: 380px;
+            background: rgba(10, 10, 10, 0.7);
+            backdrop-filter: var(--glass);
+            -webkit-backdrop-filter: var(--glass);
+            border: 1px solid var(--void-border);
+            border-radius: 32px;
+            padding: 48px 32px;
+            display: flex; flex-direction: column; gap: 24px;
+            box-shadow: 0 40px 80px -20px rgba(0,0,0,0.8);
+            transform: translateZ(0);
+            transition: all 0.8s var(--ease-expo);
+        }
+
+        .brand-title {
+            font-size: 2rem; font-weight: 700; letter-spacing: -1px;
+            background: linear-gradient(to right, #fff, #94a3b8);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 4px;
+        }
+
+        .brand-subtitle { font-size: 0.9rem; color: var(--text-secondary); letter-spacing: 0.5px; }
+
+        .input-group { position: relative; width: 100%; }
+        
+        input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--void-border);
+            border-radius: 20px;
+            padding: 20px 24px;
+            color: white; font-size: 1rem;
+            transition: all 0.3s var(--ease-expo);
+        }
+        
+        input:focus {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(99, 102, 241, 0.5);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+            transform: scale(1.02);
+        }
+
+        .btn-primary {
+            background: var(--text-primary);
+            color: #000;
+            border: none;
+            border-radius: 20px;
+            padding: 20px;
+            font-weight: 600; font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.4s var(--ease-expo);
+            position: relative; overflow: hidden;
+            display: flex; justify-content: center; align-items: center; gap: 12px;
+        }
+
+        .btn-primary:hover { transform: scale(1.03); box-shadow: 0 10px 30px rgba(255,255,255,0.15); }
+        .btn-primary:active { transform: scale(0.96); }
+        .btn-primary:disabled {
+            background: rgba(255, 255, 255, 0.3);
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .meta-info {
+            background: rgba(255,255,255,0.02);
+            border-radius: 16px; padding: 16px;
+            font-size: 0.8rem; color: var(--text-secondary); line-height: 1.6;
+        }
+
+        /* -----------------------------------------------------------
+           💬 聊天界面：流体布局
+           ----------------------------------------------------------- */
+        .chat-interface {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column;
+            background: var(--void-panel);
+            backdrop-filter: blur(40px);
+            opacity: 0; pointer-events: none;
+            transform: scale(0.95) translateY(20px);
+            transition: all 0.8s var(--ease-expo);
+        }
+
+        .chat-interface.active { 
+            opacity: 1; 
+            pointer-events: auto; 
+            transform: scale(1) translateY(0);
+        }
+
+        @media (min-width: 768px) {
+            .chat-interface {
+                inset: 40px; border-radius: 32px; border: 1px solid var(--void-border);
+                box-shadow: 0 50px 100px -20px rgba(0,0,0,0.7);
+            }
+        }
+
+        /* 顶部栏 */
+        .chat-header {
+            padding: 24px 32px;
+            border-bottom: 1px solid var(--void-border);
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(5, 5, 5, 0.8);
+            z-index: 10;
+            flex-shrink: 0;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .ai-status { display: flex; align-items: center; gap: 16px; }
+        .avatar-glow {
+            width: 44px; height: 44px; border-radius: 14px;
+            background: var(--primary-gradient);
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; color: white;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+        .avatar-glow::after {
+            content: ""; position: absolute; inset: -2px; border-radius: 16px;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .status-text h3 { font-size: 1rem; margin-bottom: 2px; letter-spacing: 0.5px; }
+        .status-badge { font-size: 0.75rem; color: #4ade80; display: flex; align-items: center; gap: 6px; }
+        .status-dot { width: 6px; height: 6px; background: currentColor; border-radius: 50%; animation: pulse-dot 2s infinite; }
+
+        /* 消息区域 */
+        .scroll-area {
+            flex: 1; overflow-y: auto; padding: 32px;
+            display: flex; flex-direction: column; gap: 32px;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            position: relative;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        /* 隐藏滚动条但保留功能 */
+        .scroll-area::-webkit-scrollbar { width: 6px; }
+        .scroll-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+        .message {
+            max-width: 80%;
+            animation: slide-up 0.6s var(--ease-expo) forwards;
+            opacity: 0; transform: translateY(20px);
+            -webkit-user-select: text;
+            user-select: text;
+        }
+        
+        .message.user { align-self: flex-end; }
+        .message.ai { align-self: flex-start; }
+
+        .bubble {
+            padding: 18px 24px; border-radius: 24px;
+            font-size: 1rem; line-height: 1.6; letter-spacing: 0.3px;
+            position: relative;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        .user .bubble {
+            background: var(--primary-gradient);
+            color: white;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
+        }
+
+        .ai .bubble {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.05);
+            color: var(--text-primary);
+            border-bottom-left-radius: 4px;
+        }
+
+        /* API状态指示器 */
+        .api-status {
+            position: absolute;
+            top: 16px;
+            right: 100px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            padding: 4px 8px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--void-border);
+            transition: all 0.3s ease;
+        }
+        
+        .api-status.online { color: var(--success); }
+        .api-status.channel-1 { border-left: 3px solid #6366f1; }
+        .api-status.channel-2 { border-left: 3px solid #a855f7; }
+        
+        .api-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        
+        .api-status.online .api-indicator {
+            animation: pulse-dot 2s infinite;
+        }
+
+        /* 底部输入栏 */
+        .input-dock {
+            padding: 24px 32px;
+            background: rgba(5, 5, 5, 0.9);
+            border-top: 1px solid var(--void-border);
+            display: flex; gap: 16px; align-items: flex-end;
+            flex-shrink: 0;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .glass-input {
+            flex: 1; min-height: 56px; max-height: 120px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--void-border);
+            border-radius: 28px;
+            padding: 16px 24px;
+            color: white; font-size: 1rem; line-height: 1.5;
+            resize: none; font-family: inherit;
+            transition: all 0.3s;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+        
+        .glass-input:focus { 
+            background: rgba(255,255,255,0.06); 
+            border-color: rgba(255,255,255,0.2); 
+        }
+        
+        .glass-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .send-trigger {
+            width: 56px; height: 56px; border-radius: 50%;
+            background: white; color: black; border: none;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; cursor: pointer;
+            transition: all 0.3s var(--ease-expo);
+        }
+        
+        .send-trigger:hover { transform: scale(1.1) rotate(-10deg); }
+        .send-trigger:active { transform: scale(0.9); }
+        .send-trigger:disabled {
+            background: rgba(255, 255, 255, 0.3);
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* -----------------------------------------------------------
+           ⚛️ 核心：NEURAL ORB 思考动画
+           ----------------------------------------------------------- */
+        .thinking-engine {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(5, 5, 5, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid var(--void-border);
+            z-index: 5;
+            transform: translateY(100%);
+            transition: transform 0.3s var(--ease-expo);
+            pointer-events: none;
+        }
+
+        .thinking-engine.visible {
+            transform: translateY(0);
+        }
+
+        .orb-container {
+            position: relative; width: 60px; height: 60px;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        /* 核心光球 */
+        .orb-core {
+            width: 12px; height: 12px; background: white; border-radius: 50%;
+            box-shadow: 0 0 20px 5px rgba(255,255,255,0.5);
+            z-index: 10;
+            animation: orb-breathe 2s ease-in-out infinite;
+        }
+
+        /* 轨道环 1 */
+        .orb-ring {
+            position: absolute; inset: 0; border-radius: 50%;
+            border: 1px solid transparent;
+            border-top-color: var(--primary);
+            border-right-color: rgba(168, 85, 247, 0.5);
+            animation: orb-spin 3s linear infinite;
+            filter: blur(0.5px);
+        }
+
+        /* 轨道环 2 (液态) */
+        .orb-fluid {
+            position: absolute; inset: -8px; border-radius: 50%;
+            background: conic-gradient(from 180deg, transparent, rgba(6, 182, 212, 0.4), transparent);
+            animation: orb-spin-reverse 5s linear infinite;
+            filter: blur(6px); mix-blend-mode: screen;
+        }
+
+        .thinking-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem; letter-spacing: 2px; color: var(--text-secondary);
+            text-transform: uppercase;
+            display: flex; gap: 4px;
+            margin-top: 10px;
+        }
+        
+        .dot { animation: jump 1.5s infinite; }
+        .dot:nth-child(2) { animation-delay: 0.1s; }
+        .dot:nth-child(3) { animation-delay: 0.2s; }
+
+        /* -----------------------------------------------------------
+           🔧 设置浮层
+           ----------------------------------------------------------- */
+        .settings-overlay {
+            position: absolute; top: 80px; right: 20px; width: 300px;
+            background: rgba(15, 15, 20, 0.95);
+            border: 1px solid var(--void-border);
+            border-radius: 24px; padding: 8px;
+            transform-origin: top right;
+            transform: scale(0.9) translateY(-10px); opacity: 0; pointer-events: none;
+            transition: all 0.4s var(--ease-expo);
+            z-index: 100;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .settings-overlay.active { opacity: 1; pointer-events: auto; transform: scale(1) translateY(0); }
+
+        .menu-item {
+            padding: 16px; border-radius: 16px;
+            display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; transition: 0.2s;
+            color: var(--text-secondary); font-size: 0.9rem;
+        }
+        
+        .menu-item:hover { background: rgba(255,255,255,0.05); color: white; }
+        .menu-item.active { background: rgba(99, 102, 241, 0.1); color: var(--primary); }
+
+        /* 网络状态指示器 */
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+        
+        .connection-status.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .connection-status.success { background: rgba(16, 185, 129, 0.8); }
+        .connection-status.info { background: rgba(59, 130, 246, 0.8); }
+
+        .hidden { display: none !important; }
+
+        /* 动画关键帧 */
+        @keyframes aurora-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes orb-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes orb-spin-reverse { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+        @keyframes orb-breathe { 0%, 100% { transform: scale(0.8); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } }
+        @keyframes slide-up { to { opacity: 1; transform: translateY(0); } }
+        @keyframes jump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .login-panel { 
+                width: 100%; 
+                border-radius: 0; 
+                height: 100%; 
+                border: none; 
+                justify-content: center; 
+            }
+            
+            .chat-interface { 
+                border-radius: 0; 
+                border: none; 
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+            }
+            
+            .chat-header, .input-dock { 
+                padding: 16px 20px; 
+            }
+            
+            .scroll-area { 
+                padding: 20px; 
+                padding-bottom: 100px;
+            }
+            
+            .message { 
+                max-width: 90%; 
+            }
+            
+            /* API状态指示器移动端 */
+            .api-status {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin-left: auto;
+            }
+            
+            /* 悬浮公告移动端适配 */
+            .announcement-bar {
+                width: 92%;
+                top: 12px;
+                padding: 16px 20px;
+                max-width: 380px;
+            }
+            
+            .announcement-title {
+                font-size: 0.9rem;
+            }
+            
+            .announcement-text {
+                font-size: 0.85rem;
+            }
+            
+            .announcement-close {
+                width: 36px;
+                height: 36px;
+            }
+            
+            /* 移动端键盘弹出时调整布局 */
+            body.keyboard-open .input-dock {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: rgba(5, 5, 5, 0.95);
+                z-index: 100;
+                padding-bottom: env(safe-area-inset-bottom, 20px);
+            }
+            
+            body.keyboard-open .scroll-area {
+                padding-bottom: 180px;
+            }
+            
+            body.keyboard-open .thinking-engine {
+                bottom: calc(56px + env(safe-area-inset-bottom, 20px));
+            }
+            
+            /* 思考动画移动端适配 */
+            .thinking-engine {
+                padding: 15px;
+            }
+            
+            .orb-container {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .orb-core {
+                width: 10px;
+                height: 10px;
+            }
+            
+            .thinking-label {
+                font-size: 0.6rem;
+            }
+            
+            /* ZSC新动画移动端适配 */
+            .zsc-new-loader-container {
+                width: 200px;
+                height: 200px;
+            }
+            
+            .zsc-new-orb {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .zsc-new-brand-name {
+                font-size: 2.5rem;
+            }
+            
+            .zsc-new-brand-sub {
+                font-size: 0.8rem;
+                letter-spacing: 3px;
+            }
+            
+            @keyframes zsc-new-orb-move {
+                0% {
+                    transform: rotate(0deg) translate(0, 0) scale(1);
+                }
+                25% {
+                    transform: rotate(120deg) translate(60px, 0) scale(0.6);
+                }
+                50% {
+                    transform: rotate(240deg) translate(0, 0) scale(1.4);
+                }
+                75% {
+                    transform: rotate(360deg) translate(-60px, 0) scale(0.6);
+                }
+                100% {
+                    transform: rotate(480deg) translate(0, 0) scale(1);
+                }
+            }
+        }
+        
+        /* 小屏幕手机适配 */
+        @media (max-width: 480px) {
+            .thinking-engine {
+                padding: 12px;
+            }
+            
+            .orb-container {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .orb-core {
+                width: 8px;
+                height: 8px;
+            }
+            
+            .thinking-label {
+                font-size: 0.5rem;
+                margin-top: 8px;
+            }
+            
+            /* 悬浮公告小屏幕适配 */
+            .announcement-bar {
+                width: 90%;
+                top: 10px;
+                padding: 14px 18px;
+                max-width: 340px;
+            }
+            
+            .announcement-title {
+                font-size: 0.85rem;
+                margin-bottom: 10px;
+            }
+            
+            .announcement-text {
+                font-size: 0.8rem;
+            }
+            
+            .announcement-text div {
+                margin-bottom: 5px;
+                min-height: 20px;
+            }
+            
+            .announcement-close {
+                width: 32px;
+                height: 32px;
+            }
+            
+            .announcement-close i {
+                font-size: 1rem;
+            }
+            
+            /* ZSC新动画小屏幕适配 */
+            .zsc-new-loader-container {
+                width: 160px;
+                height: 160px;
+                margin-bottom: 20px;
+            }
+            
+            .zsc-new-orb {
+                width: 30px;
+                height: 30px;
+            }
+            
+            .zsc-new-brand-name {
+                font-size: 2rem;
+            }
+            
+            .zsc-new-brand-sub {
+                font-size: 0.7rem;
+                letter-spacing: 2px;
+            }
+            
+            .zsc-new-progress-container {
+                width: 160px;
+            }
+            
+            .zsc-new-skip-btn {
+                bottom: 20px;
+                right: 20px;
+                padding: 8px 16px;
+                font-size: 0.8rem;
+            }
+        }
+        
+        /* 超大屏幕适配 */
+        @media (min-width: 1200px) {
+            .announcement-bar {
+                max-width: 480px;
+            }
+            
+            /* ZSC新动画大屏幕适配 */
+            .zsc-new-loader-container {
+                width: 350px;
+                height: 350px;
+            }
+            
+            .zsc-new-orb {
+                width: 70px;
+                height: 70px;
+            }
+            
+            .zsc-new-brand-name {
+                font-size: 4rem;
+            }
+            
+            .zsc-new-brand-sub {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body class="no-scroll">
+    <!-- SVG Filter for the "Gooey" liquid effect -->
+    <svg class="filter-svg" aria-hidden="true">
+        <defs>
+            <filter id="goo">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
+                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="goo" />
+                <feComposite in="SourceGraphic" in2="goo" operator="atop"/>
+            </filter>
+        </defs>
+    </svg>
+    
+    <!-- 🚀 ZSC科技新入场动画 - 流畅液态动画 -->
+    <div class="zsc-new-entry-animation" id="zscEntryAnimation">
+        <div class="zsc-new-bg-gradient"></div>
+        
+        <div class="zsc-new-loader-container">
+            <div class="zsc-new-orb"></div>
+            <div class="zsc-new-orb"></div>
+            <div class="zsc-new-orb"></div>
+        </div>
+        
+        <div class="zsc-new-text-container">
+            <div class="zsc-new-brand-name">zsc科技</div>
+            <div class="zsc-new-brand-sub">ZSC TECHNOLOGY</div>
+        </div>
+        
+        <div class="zsc-new-progress-container">
+            <div class="zsc-new-progress-bar" id="zscProgressBar"></div>
+        </div>
+        
+        <button class="zsc-new-skip-btn" id="zscSkipBtn">跳过动画</button>
+    </div>
+    
+    <!-- 📢 悬浮公告 - 高级毛玻璃版 -->
+    <div class="announcement-bar" id="announcementBar">
+        <div class="announcement-content">
+            <div class="announcement-title">
+                <div class="announcement-icon">📣</div>
+                <div>公告</div>
+            </div>
+            <div class="announcement-text">
+                <div>巅峰模型维护中</div>
+                <div>增加AI人设功能</div>
+                <div>添加三种人设</div>
+            </div>
+        </div>
+        <button class="announcement-close" id="announcementClose">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    
+    <!-- 网络状态指示器 -->
+    <div class="connection-status" id="connectionStatus">
+        <i class="fas fa-wifi"></i>
+        <span>连接成功</span>
+    </div>
+    
+    <!-- 🌆 原index.html内容 -->
+    <div class="ambient-bg">
+        <div class="aurora"></div>
+    </div>
+
+    <div class="app-wrapper" id="appWrapper">
+        <div class="login-panel" id="loginCard">
+            <div>
+                <h1 class="brand-title">GLM4.5</h1>
+                <p class="brand-subtitle">ZSC-GLM4.5 plus 品质至上</p>
+            </div>
+            
+            <div class="input-group">
+                <input type="password" id="userKey" placeholder="输入用户密钥" autocomplete="off">
+            </div>
+            
+            <button class="btn-primary" id="loginButton">
+                <span>Enter System</span>
+                <i class="fas fa-arrow-right"></i>
+            </button>
+            
+            <div class="meta-info">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span>状态</span>
+                    <span style="color:#4ade80">● 在线</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span>延迟</span>
+                    <span id="latencyIndicator">检测中...</span>
+                </div>
+                <div style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
+                    免费获取密钥: QQ群 1070356813
+                </div>
+            </div>
+            <div id="loginError" style="color:#ef4444; font-size:0.9rem; text-align:center; display:none;">Error: Invalid Key</div>
+        </div>
+
+        <div class="chat-interface" id="chatContainer">
+            <div class="chat-header">
+                <div class="ai-status">
+                    <div class="avatar-glow">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <div class="status-text">
+                        <h3>ZSC-GLM4.5</h3>
+                        <div class="status-badge"><div class="status-dot"></div> 在线</div>
+                    </div>
+                </div>
+                <div class="api-status channel-1" id="apiStatusIndicator">
+                    <div class="api-indicator"></div>
+                    <span>通道1: 正常</span>
+                </div>
+                <div style="display:flex; gap:12px;">
+                    <button id="settingsBtn" style="background:transparent; border:none; color:white; font-size:1.1rem; cursor:pointer;"><i class="fas fa-sliders-h"></i></button>
+                    <button id="resetBtn" style="background:transparent; border:none; color:white; font-size:1.1rem; cursor:pointer;"><i class="fas fa-redo-alt"></i></button>
+                </div>
+            </div>
+
+            <div class="scroll-area" id="msgContainer">
+                <div class="message ai">
+                    <div class="bubble">
+                        系统连接成功。AETHER 引擎已就绪，等待指令。
+                    </div>
+                </div>
+            </div>
+
+            <!-- 思考动画现在放在消息区域下方，不会挡住消息 -->
+            <div id="loading" class="thinking-engine">
+                <div class="orb-container">
+                    <div class="orb-core"></div>
+                    <div class="orb-ring"></div>
+                    <div class="orb-fluid"></div>
+                </div>
+                <div class="thinking-label">
+                    (一分钟内正常)思考中<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+                </div>
+            </div>
+
+            <div class="input-dock">
+                <textarea class="glass-input" id="msgInput" placeholder="zsc科技" autocomplete="off"></textarea>
+                <button class="send-trigger" id="sendBtn">
+                    <i class="fas fa-arrow-up"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-overlay" id="settingsPanel">
+        <div style="padding:16px; font-size:0.8rem; color:#666; text-transform:uppercase; letter-spacing:1px;">AI丨模型</div>
+        <div id="modelList"></div>
+        <div style="padding:16px 16px 8px 16px; font-size:0.8rem; color:#666; text-transform:uppercase; letter-spacing:1px; border-top:1px solid rgba(255,255,255,0.05); margin-top:8px;">AI丨人格</div>
+        <div id="personaList"></div>
+        <div style="padding:16px 16px 8px 16px; font-size:0.8rem; color:#666; text-transform:uppercase; letter-spacing:1px; border-top:1px solid rgba(255,255,255,0.05); margin-top:8px;">API丨设置</div>
+        <div class="menu-item" onclick="clearApiCache()">
+            <span>清除API缓存</span>
+            <i class="fas fa-broom"></i>
+        </div>
+        <div class="menu-item" onclick="switchApiChannel()">
+            <span>手动切换API通道</span>
+            <i class="fas fa-exchange-alt"></i>
+        </div>
+        <div id="currentChannelInfo" style="padding: 12px 16px; font-size: 0.75rem; color: var(--text-secondary); border-top: 1px solid rgba(255,255,255,0.05);">
+            当前使用: <span id="currentChannelText">通道1</span>
+        </div>
+    </div>
+
+    <script>
+//sb想看我代码？丢个超长乱码给你🥰
+const _0x414090=_0x3d63;(function(_0x223bf1,_0x269e47){const _0xc9a090=_0x3d63,_0x374643=_0x223bf1();while(!![]){try{const _0x40eb49=-parseInt(_0xc9a090(0x187))/0x1+-parseInt(_0xc9a090(0x14e))/0x2*(parseInt(_0xc9a090(0x16c))/0x3)+-parseInt(_0xc9a090(0x1c1))/0x4+parseInt(_0xc9a090(0x15f))/0x5*(parseInt(_0xc9a090(0x12f))/0x6)+-parseInt(_0xc9a090(0x165))/0x7+-parseInt(_0xc9a090(0xcd))/0x8*(parseInt(_0xc9a090(0xf7))/0x9)+parseInt(_0xc9a090(0xe0))/0xa;if(_0x40eb49===_0x269e47)break;else _0x374643['push'](_0x374643['shift']());}catch(_0x249358){_0x374643['push'](_0x374643['shift']());}}}(_0x2e73,0x68533));const CONFIG={'apiKeys':[{'name':_0x414090(0x107),'encryptedApiKey':_0x414090(0x12b),'color':_0x414090(0x191)},{'name':'通道2','encryptedApiKey':_0x414090(0x169),'color':_0x414090(0xdb)}],'encryptedLoginKey':_0x414090(0x171),'endpoint':_0x414090(0x12c),'defaultModel':_0x414090(0xe3),'timeout':0xea60,'maxRetries':0x3,'retryDelay':0x3e8},API_METRICS={'totalCalls':0x0,'successfulCalls':0x0,'failedCalls':0x0,'totalResponseTime':0x0,'lastLatency':0x0,'currentChannel':0x0,'channelStatus':[!![],!![]]},CACHE={'maxSize':0xa,'store':new Map(),'get'(_0x3cb00a){const _0x4b3132=_0x414090,_0x582087=this[_0x4b3132(0xf1)]['get'](_0x3cb00a);if(_0x582087&&Date['now']()<_0x582087[_0x4b3132(0xe6)])return _0x582087['value'];return this['store']['delete'](_0x3cb00a),null;},'set'(_0x3d20e8,_0x1837ea,_0x32d882=0x493e0){const _0x4aa3eb=_0x414090;if(this[_0x4aa3eb(0xf1)][_0x4aa3eb(0x1a7)]>=this[_0x4aa3eb(0x13b)]){const _0x2f8464=this[_0x4aa3eb(0xf1)][_0x4aa3eb(0x186)]()['next']()[_0x4aa3eb(0x114)];this[_0x4aa3eb(0xf1)][_0x4aa3eb(0x177)](_0x2f8464);}this[_0x4aa3eb(0xf1)]['set'](_0x3d20e8,{'value':_0x1837ea,'expiry':Date[_0x4aa3eb(0x173)]()+_0x32d882});},'clear'(){const _0x45427a=_0x414090;this[_0x45427a(0xf1)][_0x45427a(0x11c)]();}};function decryptBase64(_0x10605a){const _0x38b04c=_0x414090;try{return atob(_0x10605a);}catch(_0x2bda86){return console[_0x38b04c(0x189)](_0x38b04c(0x19b),_0x2bda86),'';}}function getCurrentApiKey(){const _0x466899=_0x414090;return decryptBase64(CONFIG['apiKeys'][API_METRICS[_0x466899(0x17c)]][_0x466899(0xd6)]);}function getApiKeyByChannel(_0x31f14d){const _0x35b224=_0x414090;if(_0x31f14d>=0x0&&_0x31f14d<CONFIG[_0x35b224(0x182)][_0x35b224(0x140)])return decryptBase64(CONFIG[_0x35b224(0x182)][_0x31f14d][_0x35b224(0xd6)]);return'';}function getLoginKey(){return decryptBase64(CONFIG['encryptedLoginKey']);}function switchToApiChannel(_0x10ae52,_0x52aab2=!![]){const _0x14501e=_0x414090;if(_0x10ae52>=0x0&&_0x10ae52<CONFIG[_0x14501e(0x182)][_0x14501e(0x140)]){API_METRICS['currentChannel']=_0x10ae52;const _0x5392c7=CONFIG[_0x14501e(0x182)][_0x10ae52][_0x14501e(0x17e)],_0x1000b2=CONFIG['apiKeys'][_0x10ae52][_0x14501e(0x11b)];return UI[_0x14501e(0x10c)]&&(UI[_0x14501e(0x10c)][_0x14501e(0x144)]='api-status\x20online\x20channel-'+(_0x10ae52+0x1),UI[_0x14501e(0x10c)][_0x14501e(0x172)]=_0x14501e(0x1b5)+_0x5392c7+_0x14501e(0x157),UI[_0x14501e(0x10c)][_0x14501e(0x1bc)]['borderLeftColor']=_0x1000b2),UI[_0x14501e(0x13d)]&&(UI[_0x14501e(0x13d)][_0x14501e(0xd1)]=_0x5392c7),_0x52aab2&&showConnectionStatus(_0x14501e(0xef)+_0x5392c7,_0x14501e(0x118)),!![];}return![];}window[_0x414090(0x147)]=function(){const _0x430781=_0x414090,_0x370ce7=(API_METRICS[_0x430781(0x17c)]+0x1)%CONFIG['apiKeys']['length'];switchToApiChannel(_0x370ce7)&&UI['settings'][_0x430781(0x185)][_0x430781(0x15a)](_0x430781(0x122));};function showConnectionStatus(_0x5d3994,_0x211859=_0x414090(0x1b3)){const _0x956eaa=_0x414090,_0x5268ef=UI[_0x956eaa(0x146)],_0x2f6da0=_0x5268ef['querySelector']('i')||document[_0x956eaa(0x16b)]('i');switch(_0x211859){case _0x956eaa(0x1b3):_0x2f6da0[_0x956eaa(0x144)]=_0x956eaa(0xe7);break;case'info':_0x2f6da0[_0x956eaa(0x144)]=_0x956eaa(0xdc);break;default:_0x2f6da0[_0x956eaa(0x144)]=_0x956eaa(0x1b4);}_0x5268ef[_0x956eaa(0x172)]='',_0x5268ef[_0x956eaa(0xe4)](_0x2f6da0),_0x5268ef[_0x956eaa(0xe4)](document['createTextNode']('\x20'+_0x5d3994)),_0x5268ef[_0x956eaa(0x144)]=_0x956eaa(0xd8)+_0x211859+_0x956eaa(0xf6),setTimeout(()=>{const _0x241d99=_0x956eaa;_0x5268ef[_0x241d99(0x185)][_0x241d99(0x15a)](_0x241d99(0x138));},0xbb8);}function updateApiStatusIndicator(){const _0x43fb83=_0x414090,_0x244da1=UI[_0x43fb83(0x10c)];if(!_0x244da1)return;_0x244da1['className']=_0x43fb83(0x150)+(API_METRICS[_0x43fb83(0x17c)]+0x1);const _0x4e05bc=CONFIG[_0x43fb83(0x182)][API_METRICS['currentChannel']][_0x43fb83(0x17e)],_0x511115=CONFIG[_0x43fb83(0x182)][API_METRICS[_0x43fb83(0x17c)]][_0x43fb83(0x11b)];_0x244da1['innerHTML']=_0x43fb83(0x1b5)+_0x4e05bc+_0x43fb83(0x157),_0x244da1[_0x43fb83(0x1bc)][_0x43fb83(0x1ad)]=_0x511115;}async function testApiLatency(){const _0x45b341=_0x414090;try{const _0x457dee=Date[_0x45b341(0x173)](),_0x1a9db2=new AbortController(),_0x243c2c=setTimeout(()=>_0x1a9db2[_0x45b341(0xe8)](),0x1388),_0x2db0f9=await fetch(CONFIG[_0x45b341(0x188)],{'method':_0x45b341(0x19f),'headers':{'Authorization':_0x45b341(0x1b9)+getCurrentApiKey()},'signal':_0x1a9db2['signal']});clearTimeout(_0x243c2c);const _0x25f420=Date[_0x45b341(0x173)]()-_0x457dee;if(UI[_0x45b341(0x119)]){UI['latencyIndicator']['textContent']=_0x25f420+'ms';if(_0x25f420<0x64)UI[_0x45b341(0x119)][_0x45b341(0x1bc)][_0x45b341(0x11b)]='#4ade80';else _0x25f420<0x12c?UI['latencyIndicator'][_0x45b341(0x1bc)][_0x45b341(0x11b)]=_0x45b341(0x17a):UI[_0x45b341(0x119)][_0x45b341(0x1bc)][_0x45b341(0x11b)]=_0x45b341(0x109);}return _0x25f420;}catch(_0x11c0f6){return console[_0x45b341(0x189)](_0x45b341(0x11d),_0x11c0f6),null;}}async function callApiWithKeyRotation(_0x1322d3,_0x5c10a4,_0xc5583f){const _0x4480aa=_0x414090,_0x2d3e16=JSON[_0x4480aa(0x11a)]({'messages':_0x1322d3,'model':_0x5c10a4,'channel':API_METRICS[_0x4480aa(0x17c)]}),_0x297fac=CACHE['get'](_0x2d3e16);if(_0x297fac&&!_0xc5583f)return _0x297fac;const _0xcf0e3a=Date[_0x4480aa(0x173)]();API_METRICS[_0x4480aa(0x199)]++;let _0x249119=new Set(),_0x4ec28f=API_METRICS[_0x4480aa(0x17c)];while(_0x249119[_0x4480aa(0x1a7)]<CONFIG[_0x4480aa(0x182)]['length']){if(_0x249119[_0x4480aa(0x17f)](_0x4ec28f)){for(let _0xb2d585=0x0;_0xb2d585<CONFIG[_0x4480aa(0x182)][_0x4480aa(0x140)];_0xb2d585++){if(!_0x249119['has'](_0xb2d585)&&API_METRICS['channelStatus'][_0xb2d585]){_0x4ec28f=_0xb2d585;break;}}if(_0x249119[_0x4480aa(0x17f)](_0x4ec28f))break;}_0x249119['add'](_0x4ec28f);let _0x529a4=0x0;_0x4ec28f!==API_METRICS[_0x4480aa(0x17c)]&&(switchToApiChannel(_0x4ec28f,![]),showConnectionStatus(_0x4480aa(0x113)+CONFIG[_0x4480aa(0x182)][_0x4ec28f]['name'],_0x4480aa(0x118)));while(_0x529a4<=CONFIG['maxRetries']){try{const _0x352888=getApiKeyByChannel(_0x4ec28f),_0x3f12a0=new AbortController(),_0x574743=setTimeout(()=>_0x3f12a0[_0x4480aa(0xe8)](),CONFIG['timeout']),_0x356403=await fetch(CONFIG['endpoint'],{'method':_0x4480aa(0xce),'headers':{'Authorization':'Bearer\x20'+_0x352888,'Content-Type':_0x4480aa(0x16a),'Accept':'text/event-stream'},'body':JSON[_0x4480aa(0x11a)]({'model':_0x5c10a4,'messages':_0x1322d3,'stream':!!_0xc5583f,'temperature':0.7,'max_tokens':0x3e8}),'signal':_0x3f12a0[_0x4480aa(0xfe)]});clearTimeout(_0x574743);if(_0x356403[_0x4480aa(0x167)]===0x191||_0x356403['status']===0x193){API_METRICS[_0x4480aa(0x18a)][_0x4ec28f]=![];throw new Error('API密钥错误\x20(HTTP\x20'+_0x356403['status']+')');}if(!_0x356403['ok'])throw new Error(_0x4480aa(0x117)+_0x356403[_0x4480aa(0x167)]+':\x20'+_0x356403['statusText']);API_METRICS['channelStatus'][_0x4ec28f]=!![];const _0x575dbf=Date[_0x4480aa(0x173)]()-_0xcf0e3a;API_METRICS[_0x4480aa(0x17d)]+=_0x575dbf,API_METRICS[_0x4480aa(0x1a1)]=_0x575dbf,API_METRICS[_0x4480aa(0x1a0)]++,updateApiStatusIndicator();if(_0xc5583f&&_0x356403[_0x4480aa(0xe9)]){const _0x5cbcc3=_0x356403['body']['getReader'](),_0x4bcdfc=new TextDecoder();let _0x9cfa34='',_0x45317d='';while(!![]){const {done:_0x3b74c0,value:_0x16ccb1}=await _0x5cbcc3[_0x4480aa(0xfb)]();if(_0x3b74c0)break;_0x9cfa34+=_0x4bcdfc[_0x4480aa(0xf9)](_0x16ccb1,{'stream':!![]});const _0x1f1202=_0x9cfa34[_0x4480aa(0x16d)]('\x0a');_0x9cfa34=_0x1f1202[_0x4480aa(0x1bf)]()||'';for(const _0xc5ebd8 of _0x1f1202){if(_0xc5ebd8[_0x4480aa(0x112)](_0x4480aa(0x1b1))&&_0xc5ebd8!==_0x4480aa(0xed))try{const _0x2ca2b0=JSON[_0x4480aa(0x1a9)](_0xc5ebd8[_0x4480aa(0x1a4)](0x6)),_0x1ec9ec=_0x2ca2b0[_0x4480aa(0x196)][0x0]?.[_0x4480aa(0x192)]?.['content']||'';_0x45317d+=_0x1ec9ec,_0xc5583f(_0x1ec9ec);}catch(_0x3bab64){console[_0x4480aa(0x189)](_0x4480aa(0x12a),_0x3bab64);}}}return CACHE[_0x4480aa(0x14a)](_0x2d3e16,_0x45317d),_0x45317d;}else{const _0x4afcc2=await _0x356403[_0x4480aa(0xda)](),_0x2d22c8=_0x4afcc2['choices'][0x0]?.[_0x4480aa(0x16f)]?.[_0x4480aa(0x156)]||'';return CACHE['set'](_0x2d3e16,_0x2d22c8),_0x2d22c8;}}catch(_0x275b4b){if(_0x275b4b[_0x4480aa(0x16f)]&&_0x275b4b[_0x4480aa(0x16f)]['includes'](_0x4480aa(0x1a8))){console[_0x4480aa(0xd9)]('通道'+(_0x4ec28f+0x1)+_0x4480aa(0x13c),_0x275b4b);break;}_0x529a4++,_0x529a4<=CONFIG[_0x4480aa(0x10d)]&&(console[_0x4480aa(0xd9)](_0x4480aa(0xdf)+_0x529a4+'次重试...',_0x275b4b),await new Promise(_0x16989b=>setTimeout(_0x16989b,CONFIG['retryDelay']*_0x529a4)));}}}return API_METRICS['failedCalls']++,console[_0x4480aa(0x189)](_0x4480aa(0xf4)),null;}const STATE={'model':_0x414090(0x1b6),'persona':_0x414090(0x121),'history':[],'isTyping':![],'keyboardOpen':![],'originalHeight':0x0,'apiConnected':![],'lastMessageTime':0x0},DATA={'models':[{'id':_0x414090(0xe3),'name':_0x414090(0x1b7)},{'id':_0x414090(0x1b6),'name':'QwQ-32B\x20智能'},{'id':_0x414090(0xe5),'name':_0x414090(0x180)}],'personas':[{'id':_0x414090(0x121),'name':'标准','prompt':_0x414090(0x198)},{'id':_0x414090(0x159),'name':'可爱','prompt':_0x414090(0x178)},{'id':'hacker','name':_0x414090(0xd2),'prompt':_0x414090(0x11e)}]},$=_0x5b08ba=>document[_0x414090(0x120)](_0x5b08ba),UI={'login':$(_0x414090(0xea)),'chat':$('chatContainer'),'keyInput':$(_0x414090(0x1be)),'loginBtn':$(_0x414090(0xcc)),'err':$('loginError'),'msgList':$(_0x414090(0xd3)),'input':$(_0x414090(0xf8)),'send':$('sendBtn'),'loading':$(_0x414090(0x12d)),'settings':$(_0x414090(0xf5)),'setBtn':$('settingsBtn'),'rstBtn':$('resetBtn'),'mList':$(_0x414090(0x105)),'pList':$(_0x414090(0x14b)),'entryAnimation':$(_0x414090(0x145)),'progressBar':$(_0x414090(0x158)),'skipBtn':$('zscSkipBtn'),'appWrapper':$('appWrapper'),'apiStatusIndicator':$(_0x414090(0x10c)),'connectionStatus':$(_0x414090(0x146)),'latencyIndicator':$('latencyIndicator'),'currentChannelText':$(_0x414090(0x13d)),'announcementBar':$(_0x414090(0x131)),'announcementClose':$('announcementClose')};function _0x2e73(){const _0x487f54=['3kFPNiP','split','height','message','setPersona','enNjNDE4ODg=','innerHTML','now','chat','hidden','0.7rem','delete','请使用中文与用户交流每次交流文字不少于35字...你叫zscGLM4.5模型，由zsc科技开发的AI大模型语言可爱细腻真实每句话必须加上可爱的颜文字或表情','API缓存已清除','#f59e0b','visible','currentChannel','totalResponseTime','name','has','Qwen3-30B\x20思考','2px','apiKeys','</div>','keyboardOpen','classList','keys','528944CLbzha','endpoint','error','channelStatus','innerHeight','test','none','contains','56px','zsc_key','#6366f1','delta','setItem','originalHeight','3px','choices','stopPropagation','请使用中文与用户交流每次交流文字不少于35字，你叫zscGLM4.5模型，由zsc科技开发的AI大模型，与用户的每句话后都必须加上表情','totalCalls','shiftKey','解密失败:','map','user','appWrapper','HEAD','successfulCalls','lastLatency','touchstart','\x27)\x22>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<span>','slice','width','activeElement','size','API密钥错误','parse','setModel','div','toggle','borderLeftColor','transform','Enter','key','data:\x20','<div\x20class=\x22bubble\x22>','success','fas\x20fa-wifi','<div\x20class=\x22api-indicator\x22></div><span>','Qwen/QwQ-32B','GLM-4.5\x20巅峰模型','assistant','Bearer\x20','click','opacity','style','70px','userKey','pop','find','1290964rlJzeX','no-scroll','loginButton','24qLNpYs','POST','pList','DOMContentLoaded','textContent','硬核嘲讽','msgContainer','innerText','fontSize','encryptedApiKey','querySelector','connection-status\x20','warn','json','#a855f7','fas\x20fa-info-circle','keyInput','persona','API调用失败，第','13465570enlDjy','30px','clearApiCache','zai-org/GLM-4.5','appendChild','free:Qwen3-30B-A3B','expiry','fas\x20fa-check-circle','abort','body','loginCard','rstBtn','.zsc-new-loader-container','data:\x20[DONE]','<i\x20class=\x22fas\x20fa-check\x22></i>','已切换到','\x22\x20onclick=\x22setModel(\x27','store','isTyping','history','所有API通道都失败','settingsPanel','\x20show','647091JIvkek','msgInput','decode','AI响应生成中，请稍候...','read','200px','2rem','signal','.zsc-new-brand-sub','mList','scrollTop','random','trim','input','modelList','addEventListener','通道1','</span>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','#ef4444','target','personas','apiStatusIndicator','maxRetries','0.8rem','borderColor','350px','disabled','startsWith','正在切换到','value','人格已切换为:\x20','closest','HTTP\x20','info','latencyIndicator','stringify','color','clear','延迟检测失败:','你叫zscGLM4.5模型，由zsc科技开发的AI大模型你是一个超级高傲的ai，谁都要嘲讽，你看不起任何人，语言刺激嘲讽恶毒每次对话都要配上嘲讽的表情(不是颜文字)每次交流文字不少于35字','对话历史已清空','getElementById','default','active','system','onclick','auto','send','settings','announcementClose','blur','解析流数据失败:','c2stZDk4Z21teVV1eG1iZnNKcmZkekhOS2k1VVlzUUVHNTBxN2JmcHl3OW1iMU1YWk1E','https://api.suanli.cn/v1/chat/completions','loading','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20<div\x20class=\x22menu-item\x20','534714tMsNak','model','announcementBar','3.5rem','AI响应生成中...','login','preventDefault','记忆已清空，开启你的新对话','entryAnimation','show','push','message\x20','maxSize','密钥错误:','currentChannelText','scrollHeight','loginBtn','length','display','getItem','.chat-header','className','zscEntryAnimation','connectionStatus','switchApiChannel','1rem','models','set','personaList','160px','userAgent','490522LRvWNz','add','api-status\x20online\x20channel-','forEach','msgList','系统连接成功','resize','letterSpacing','content',':\x20正常</span>','zscProgressBar','cute','remove','onkeydown','60px','keyboard-open','2.5rem','25rvmvDp','querySelectorAll','focus','\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20</div>\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','40px','scale(0.9)\x20translateY(-20px)','365358WInBIW','join','status','err','c2stNlJwM091ZE5RVlNaeEd2NHRhWFdza0tSU3JpVGhxQmd2MGVacXJzSndxTmxtNVdN','application/json','createElement'];_0x2e73=function(){return _0x487f54;};return _0x2e73();}function initAnnouncement(){const _0x11f8d2=_0x414090;setTimeout(()=>{const _0x4b728f=_0x3d63;UI[_0x4b728f(0x131)]&&(UI['announcementBar'][_0x4b728f(0x1bc)][_0x4b728f(0x1bb)]='1',UI[_0x4b728f(0x131)][_0x4b728f(0x1bc)][_0x4b728f(0x1ae)]='translateX(-50%)\x20translateY(0)');},0x320),UI[_0x11f8d2(0x128)]&&UI[_0x11f8d2(0x128)][_0x11f8d2(0x106)](_0x11f8d2(0x1ba),function(){const _0x461d9f=_0x11f8d2;UI[_0x461d9f(0x131)]&&UI[_0x461d9f(0x131)][_0x461d9f(0x185)][_0x461d9f(0x14f)](_0x461d9f(0x175));}),UI['announcementBar']&&UI[_0x11f8d2(0x131)][_0x11f8d2(0x106)](_0x11f8d2(0x1ba),function(_0x432bd2){const _0x5c4941=_0x11f8d2;_0x432bd2[_0x5c4941(0x197)]();}),UI[_0x11f8d2(0x128)]&&UI[_0x11f8d2(0x128)][_0x11f8d2(0x106)](_0x11f8d2(0x1a2),function(_0x54f72f){_0x54f72f['stopPropagation']();});}function initKeyboardHandling(){const _0x2f3810=_0x414090,_0x171167=/iPhone|iPad|iPod|Android/i['test'](navigator[_0x2f3810(0x14d)]);if(!_0x171167)return;STATE[_0x2f3810(0x194)]=window[_0x2f3810(0x18b)],window[_0x2f3810(0x106)](_0x2f3810(0x154),handleResize),UI[_0x2f3810(0x104)][_0x2f3810(0x106)](_0x2f3810(0x161),handleFocus),UI[_0x2f3810(0x104)]['addEventListener']('blur',handleBlur),setupSmartFocus();}function setupSmartFocus(){const _0x18b676=_0x414090,_0x2a8beb=[UI[_0x18b676(0x104)],UI[_0x18b676(0x126)]];_0x2a8beb[_0x18b676(0x151)](_0x5ae7a3=>{const _0x108ffc=_0x18b676;_0x5ae7a3&&_0x5ae7a3[_0x108ffc(0x106)]('touchstart',_0x1164ec=>{});});UI['msgList']&&UI[_0x18b676(0x152)]['addEventListener'](_0x18b676(0x1a2),_0x263ab7=>{const _0x5aece2=_0x18b676;document['activeElement']===UI[_0x5aece2(0x104)]&&UI[_0x5aece2(0x104)][_0x5aece2(0x129)](),_0x263ab7['stopPropagation']();});const _0x1c2d98=document['querySelector'](_0x18b676(0x143));_0x1c2d98&&_0x1c2d98[_0x18b676(0x106)]('touchstart',_0x1a6613=>{const _0x26ebb3=_0x18b676;document[_0x26ebb3(0x1a6)]===UI[_0x26ebb3(0x104)]&&UI['input'][_0x26ebb3(0x129)](),_0x1a6613[_0x26ebb3(0x197)]();});}function handleResize(){const _0x586a0e=_0x414090,_0x23632a=window[_0x586a0e(0x18b)];_0x23632a<STATE['originalHeight']-0x64?!STATE['keyboardOpen']&&(STATE[_0x586a0e(0x184)]=!![],document['body'][_0x586a0e(0x185)][_0x586a0e(0x14f)](_0x586a0e(0x15d)),setTimeout(scrollToBottom,0x64)):STATE[_0x586a0e(0x184)]&&(STATE['keyboardOpen']=![],document[_0x586a0e(0xe9)][_0x586a0e(0x185)][_0x586a0e(0x15a)](_0x586a0e(0x15d)),STATE[_0x586a0e(0x194)]=_0x23632a,setTimeout(scrollToBottom,0x64));}function handleFocus(){const _0x338e04=_0x414090;/iPhone|iPad|iPod|Android/i[_0x338e04(0x18c)](navigator['userAgent'])&&(document['body'][_0x338e04(0x185)]['add'](_0x338e04(0x15d)),STATE[_0x338e04(0x184)]=!![],setTimeout(scrollToBottom,0x12c));}function handleBlur(){const _0x3e3614=_0x414090;/iPhone|iPad|iPod|Android/i[_0x3e3614(0x18c)](navigator[_0x3e3614(0x14d)])&&(document['body'][_0x3e3614(0x185)][_0x3e3614(0x15a)](_0x3e3614(0x15d)),STATE['keyboardOpen']=![],STATE['originalHeight']=window[_0x3e3614(0x18b)],setTimeout(scrollToBottom,0x64));}function showLoginPage(){const _0x16c33f=_0x414090;UI[_0x16c33f(0x137)]['classList'][_0x16c33f(0x14f)](_0x16c33f(0x175)),document[_0x16c33f(0xe9)][_0x16c33f(0x185)][_0x16c33f(0x15a)](_0x16c33f(0xcb)),UI[_0x16c33f(0x19e)][_0x16c33f(0x185)][_0x16c33f(0x14f)](_0x16c33f(0x17b)),setTimeout(()=>{const _0x123014=_0x16c33f;UI[_0x123014(0x137)][_0x123014(0x1bc)]['display']=_0x123014(0x18d);},0x3e8),initKeyboardHandling(),testApiLatency(),initAnnouncement(),setInterval(testApiLatency,0xea60),UI['currentChannelText']&&(UI['currentChannelText'][_0x16c33f(0xd1)]=CONFIG[_0x16c33f(0x182)][API_METRICS[_0x16c33f(0x17c)]]['name']);}function initZscAnimation(){const _0x27be60=_0x414090;let _0x539835=0x0;const _0x1c5af8=setInterval(()=>{const _0x596350=_0x3d63;_0x539835+=Math[_0x596350(0x102)]()*0x8,_0x539835>=0x64&&(_0x539835=0x64,clearInterval(_0x1c5af8),setTimeout(()=>{showLoginPage();},0x1f4)),UI['progressBar'][_0x596350(0x1bc)][_0x596350(0x1a5)]=_0x539835+'%';},0x64);UI['skipBtn'][_0x27be60(0x106)]('click',function(){clearInterval(_0x1c5af8),showLoginPage();});function _0x15edf6(){const _0x69b477=_0x27be60,_0x235a38=document[_0x69b477(0xd7)](_0x69b477(0xec)),_0x4cc32e=document[_0x69b477(0x160)]('.zsc-new-orb'),_0x554517=document['querySelector']('.zsc-new-brand-name'),_0x368515=document['querySelector'](_0x69b477(0xff)),_0x50a683=window['innerWidth'];if(_0x50a683<0x1e0)_0x235a38&&(_0x235a38['style'][_0x69b477(0x1a5)]=_0x69b477(0x14c),_0x235a38[_0x69b477(0x1bc)]['height']=_0x69b477(0x14c)),_0x4cc32e[_0x69b477(0x151)](_0x4e8469=>{const _0x11d12b=_0x69b477;_0x4e8469[_0x11d12b(0x1bc)][_0x11d12b(0x1a5)]=_0x11d12b(0xe1),_0x4e8469[_0x11d12b(0x1bc)]['height']='30px';}),_0x554517&&(_0x554517[_0x69b477(0x1bc)][_0x69b477(0xd5)]=_0x69b477(0xfd)),_0x368515&&(_0x368515[_0x69b477(0x1bc)]['fontSize']=_0x69b477(0x176),_0x368515[_0x69b477(0x1bc)][_0x69b477(0x155)]=_0x69b477(0x181));else{if(_0x50a683<0x300)_0x235a38&&(_0x235a38[_0x69b477(0x1bc)][_0x69b477(0x1a5)]='200px',_0x235a38[_0x69b477(0x1bc)][_0x69b477(0x16e)]=_0x69b477(0xfc)),_0x4cc32e[_0x69b477(0x151)](_0x317218=>{const _0x5a09c5=_0x69b477;_0x317218[_0x5a09c5(0x1bc)][_0x5a09c5(0x1a5)]=_0x5a09c5(0x163),_0x317218[_0x5a09c5(0x1bc)][_0x5a09c5(0x16e)]=_0x5a09c5(0x163);}),_0x554517&&(_0x554517[_0x69b477(0x1bc)]['fontSize']=_0x69b477(0x15e)),_0x368515&&(_0x368515[_0x69b477(0x1bc)][_0x69b477(0xd5)]=_0x69b477(0x10e),_0x368515[_0x69b477(0x1bc)][_0x69b477(0x155)]=_0x69b477(0x195));else _0x50a683>=0x4b0?(_0x235a38&&(_0x235a38[_0x69b477(0x1bc)][_0x69b477(0x1a5)]=_0x69b477(0x110),_0x235a38['style']['height']=_0x69b477(0x110)),_0x4cc32e['forEach'](_0x570806=>{const _0x3c3acd=_0x69b477;_0x570806[_0x3c3acd(0x1bc)]['width']=_0x3c3acd(0x1bd),_0x570806[_0x3c3acd(0x1bc)][_0x3c3acd(0x16e)]=_0x3c3acd(0x1bd);}),_0x554517&&(_0x554517[_0x69b477(0x1bc)][_0x69b477(0xd5)]='4rem'),_0x368515&&(_0x368515[_0x69b477(0x1bc)]['fontSize']='1.1rem')):(_0x235a38&&(_0x235a38[_0x69b477(0x1bc)]['width']='300px',_0x235a38['style']['height']='300px'),_0x4cc32e[_0x69b477(0x151)](_0x2a50aa=>{const _0x431bac=_0x69b477;_0x2a50aa[_0x431bac(0x1bc)][_0x431bac(0x1a5)]=_0x431bac(0x15c),_0x2a50aa[_0x431bac(0x1bc)][_0x431bac(0x16e)]=_0x431bac(0x15c);}),_0x554517&&(_0x554517[_0x69b477(0x1bc)][_0x69b477(0xd5)]=_0x69b477(0x132)),_0x368515&&(_0x368515[_0x69b477(0x1bc)][_0x69b477(0xd5)]=_0x69b477(0x148),_0x368515[_0x69b477(0x1bc)][_0x69b477(0x155)]='4px'));}}_0x15edf6(),window[_0x27be60(0x106)](_0x27be60(0x154),_0x15edf6);}function initChatApp(){const _0xd458f=_0x414090,_0x100eef=localStorage[_0xd458f(0x142)](_0xd458f(0x190));if(_0x100eef)UI[_0xd458f(0xdd)][_0xd458f(0x114)]=_0x100eef;renderSettings(),bindEvents(),UI[_0xd458f(0x12d)][_0xd458f(0x185)]['remove'](_0xd458f(0x17b));}function bindEvents(){const _0x4f5ee1=_0x414090;UI[_0x4f5ee1(0x13f)][_0x4f5ee1(0x124)]=handleLogin,UI['send']['onclick']=handleSend,UI['setBtn'][_0x4f5ee1(0x124)]=_0x32150c=>{const _0x5225c2=_0x4f5ee1;_0x32150c['stopPropagation'](),UI['settings'][_0x5225c2(0x185)][_0x5225c2(0x1ac)](_0x5225c2(0x122));},UI[_0x4f5ee1(0xeb)][_0x4f5ee1(0x124)]=resetContext,document[_0x4f5ee1(0x106)]('click',_0x2cf3ec=>{const _0x522613=_0x4f5ee1;!UI['settings'][_0x522613(0x18e)](_0x2cf3ec['target'])&&_0x2cf3ec['target']!==UI['setBtn']&&UI[_0x522613(0x127)][_0x522613(0x185)][_0x522613(0x15a)](_0x522613(0x122));}),UI[_0x4f5ee1(0x104)][_0x4f5ee1(0x15b)]=_0x536a8a=>{const _0x13242a=_0x4f5ee1;_0x536a8a[_0x13242a(0x1b0)]===_0x13242a(0x1af)&&!_0x536a8a[_0x13242a(0x19a)]&&(_0x536a8a[_0x13242a(0x135)](),handleSend());},UI['input'][_0x4f5ee1(0x106)](_0x4f5ee1(0x104),function(){const _0xe5ef83=_0x4f5ee1;this['style'][_0xe5ef83(0x16e)]=_0xe5ef83(0x125),this['style'][_0xe5ef83(0x16e)]=(this[_0xe5ef83(0x13e)]>0x78?0x78:this['scrollHeight'])+'px',scrollToBottom();}),UI['msgList'][_0x4f5ee1(0x106)](_0x4f5ee1(0x1ba),_0x20b5af=>{const _0x2ddedc=_0x4f5ee1;UI[_0x2ddedc(0x127)]['classList'][_0x2ddedc(0x15a)](_0x2ddedc(0x122));if(_0x20b5af[_0x2ddedc(0x10a)][_0x2ddedc(0x116)]('.bubble'))return;document[_0x2ddedc(0x1a6)]===UI['input']&&/iPhone|iPad|iPod|Android/i[_0x2ddedc(0x18c)](navigator[_0x2ddedc(0x14d)])&&UI['input'][_0x2ddedc(0x129)]();});const _0x1127f4=document[_0x4f5ee1(0xd7)]('.chat-header');_0x1127f4&&_0x1127f4[_0x4f5ee1(0x106)](_0x4f5ee1(0x1ba),()=>{const _0x2aba7f=_0x4f5ee1;document[_0x2aba7f(0x1a6)]===UI[_0x2aba7f(0x104)]&&/iPhone|iPad|iPod|Android/i[_0x2aba7f(0x18c)](navigator[_0x2aba7f(0x14d)])&&UI[_0x2aba7f(0x104)]['blur']();});}function renderSettings(){const _0x2ba63a=_0x414090;UI[_0x2ba63a(0x100)][_0x2ba63a(0x172)]=DATA['models'][_0x2ba63a(0x19c)](_0x4a56e6=>_0x2ba63a(0x12e)+(STATE['model']===_0x4a56e6['id']?_0x2ba63a(0x122):'')+_0x2ba63a(0xf0)+_0x4a56e6['id']+_0x2ba63a(0x1a3)+_0x4a56e6['name']+_0x2ba63a(0x108)+(STATE['model']===_0x4a56e6['id']?_0x2ba63a(0xee):'')+_0x2ba63a(0x162))[_0x2ba63a(0x166)](''),UI[_0x2ba63a(0xcf)][_0x2ba63a(0x172)]=DATA[_0x2ba63a(0x10b)][_0x2ba63a(0x19c)](_0x263245=>_0x2ba63a(0x12e)+(STATE[_0x2ba63a(0xde)]===_0x263245['id']?_0x2ba63a(0x122):'')+'\x22\x20onclick=\x22setPersona(\x27'+_0x263245['id']+_0x2ba63a(0x1a3)+_0x263245[_0x2ba63a(0x17e)]+_0x2ba63a(0x108)+(STATE['persona']===_0x263245['id']?_0x2ba63a(0xee):'')+_0x2ba63a(0x162))[_0x2ba63a(0x166)]('');}window[_0x414090(0x1aa)]=_0x3f105c=>{const _0x1eae07=_0x414090;STATE['model']=_0x3f105c,renderSettings(),showConnectionStatus('模型已切换为:\x20'+DATA[_0x1eae07(0x149)][_0x1eae07(0x1c0)](_0x4b7390=>_0x4b7390['id']===_0x3f105c)[_0x1eae07(0x17e)],_0x1eae07(0x1b3));},window[_0x414090(0x170)]=_0x1fae4b=>{const _0x44ab6e=_0x414090;STATE[_0x44ab6e(0xde)]=_0x1fae4b,renderSettings(),showConnectionStatus(_0x44ab6e(0x115)+DATA[_0x44ab6e(0x10b)][_0x44ab6e(0x1c0)](_0x5556c3=>_0x5556c3['id']===_0x1fae4b)[_0x44ab6e(0x17e)],_0x44ab6e(0x1b3));},window[_0x414090(0xe2)]=function(){const _0x165d62=_0x414090;CACHE['clear'](),showConnectionStatus(_0x165d62(0x179),_0x165d62(0x1b3)),UI[_0x165d62(0x127)][_0x165d62(0x185)][_0x165d62(0x15a)](_0x165d62(0x122));};function handleLogin(){const _0xe2556=_0x414090,_0x3528d4=UI[_0xe2556(0xdd)][_0xe2556(0x114)]['trim'](),_0x1fee7d=getLoginKey();if(_0x3528d4!==_0x1fee7d){UI[_0xe2556(0x168)][_0xe2556(0x1bc)][_0xe2556(0x141)]='block',UI[_0xe2556(0xdd)]['style'][_0xe2556(0x10f)]=_0xe2556(0x109);return;}localStorage[_0xe2556(0x193)](_0xe2556(0x190),_0x3528d4),UI[_0xe2556(0x134)][_0xe2556(0x1bc)][_0xe2556(0x1ae)]=_0xe2556(0x164),UI[_0xe2556(0x134)][_0xe2556(0x1bc)]['opacity']='0',setTimeout(()=>{const _0x4d1cc5=_0xe2556;UI['login']['style'][_0x4d1cc5(0x141)]=_0x4d1cc5(0x18d),UI[_0x4d1cc5(0x174)][_0x4d1cc5(0x185)][_0x4d1cc5(0x14f)](_0x4d1cc5(0x122)),UI[_0x4d1cc5(0x131)]&&UI[_0x4d1cc5(0x131)]['classList'][_0x4d1cc5(0x14f)](_0x4d1cc5(0x175)),showConnectionStatus(_0x4d1cc5(0x153),'success'),/iPhone|iPad|iPod|Android/i[_0x4d1cc5(0x18c)](navigator['userAgent'])&&setTimeout(scrollToBottom,0x12c);},0x258);}async function handleSend(){const _0x3192b8=_0x414090,_0x4439c4=UI[_0x3192b8(0x104)][_0x3192b8(0x114)][_0x3192b8(0x103)]();if(!_0x4439c4||STATE[_0x3192b8(0xf2)])return;addMessage(_0x4439c4,'user'),UI[_0x3192b8(0x104)][_0x3192b8(0x114)]='',UI[_0x3192b8(0x104)][_0x3192b8(0x1bc)][_0x3192b8(0x16e)]=_0x3192b8(0x18f),UI[_0x3192b8(0x104)][_0x3192b8(0x111)]=!![],UI[_0x3192b8(0x126)][_0x3192b8(0x111)]=!![],UI[_0x3192b8(0x12d)]['classList'][_0x3192b8(0x14f)](_0x3192b8(0x17b)),STATE[_0x3192b8(0xf2)]=!![],scrollToBottom(),STATE[_0x3192b8(0xf3)][_0x3192b8(0x139)]({'role':_0x3192b8(0x19d),'content':_0x4439c4});const _0x425c83=STATE[_0x3192b8(0xf3)][_0x3192b8(0x1a4)](-0xc),_0xbaee92=DATA[_0x3192b8(0x10b)]['find'](_0xd70e1a=>_0xd70e1a['id']===STATE[_0x3192b8(0xde)])['prompt'];try{let _0x23be57='',_0xf88a2f=createMessageElement('ai');const _0x586beb=await callApiWithKeyRotation([{'role':_0x3192b8(0x123),'content':_0xbaee92},..._0x425c83],STATE[_0x3192b8(0x130)],_0x2d775c=>{const _0x43d617=_0x3192b8;_0x23be57+=_0x2d775c,_0xf88a2f[_0x43d617(0xd4)]=_0x23be57,scrollToBottom();});_0x586beb?STATE[_0x3192b8(0xf3)][_0x3192b8(0x139)]({'role':_0x3192b8(0x1b8),'content':_0x586beb}):addMessage(_0x3192b8(0x133),'ai');}catch(_0x51ca52){console[_0x3192b8(0x189)]('发送消息失败:',_0x51ca52),addMessage(_0x3192b8(0xfa),'ai');}finally{UI[_0x3192b8(0x12d)][_0x3192b8(0x185)]['remove'](_0x3192b8(0x17b)),STATE['isTyping']=![],UI[_0x3192b8(0x104)]['disabled']=![],UI[_0x3192b8(0x126)][_0x3192b8(0x111)]=![],UI[_0x3192b8(0x104)][_0x3192b8(0x161)](),setTimeout(scrollToBottom,0x64);}}function _0x3d63(_0x1af77f,_0x95b403){_0x1af77f=_0x1af77f-0xcb;const _0x2e735e=_0x2e73();let _0x3d63c2=_0x2e735e[_0x1af77f];return _0x3d63c2;}function addMessage(_0x4cb35d,_0x4cc02a){const _0x4ec4e5=_0x414090,_0x2e7012=document[_0x4ec4e5(0x16b)](_0x4ec4e5(0x1ab));_0x2e7012[_0x4ec4e5(0x144)]=_0x4ec4e5(0x13a)+_0x4cc02a,_0x2e7012['innerHTML']=_0x4ec4e5(0x1b2)+_0x4cb35d+_0x4ec4e5(0x183),UI[_0x4ec4e5(0x152)][_0x4ec4e5(0xe4)](_0x2e7012),scrollToBottom();}function createMessageElement(_0x484745){const _0x1bc689=_0x414090,_0x65d9a8=document['createElement'](_0x1bc689(0x1ab));_0x65d9a8[_0x1bc689(0x144)]=_0x1bc689(0x13a)+_0x484745;const _0x328e8e=document[_0x1bc689(0x16b)](_0x1bc689(0x1ab));return _0x328e8e[_0x1bc689(0x144)]='bubble',_0x65d9a8[_0x1bc689(0xe4)](_0x328e8e),UI[_0x1bc689(0x152)][_0x1bc689(0xe4)](_0x65d9a8),_0x328e8e;}function scrollToBottom(){requestAnimationFrame(()=>{const _0x431e47=_0x3d63;UI[_0x431e47(0x152)]&&(UI[_0x431e47(0x152)][_0x431e47(0x101)]=UI[_0x431e47(0x152)][_0x431e47(0x13e)]);});}function resetContext(){const _0x3a8f99=_0x414090;STATE[_0x3a8f99(0xf3)]=[],UI['msgList']['innerHTML']='',addMessage(_0x3a8f99(0x136),'ai'),showConnectionStatus(_0x3a8f99(0x11f),'success');}document[_0x414090(0x106)](_0x414090(0xd0),function(){initZscAnimation(),setTimeout(()=>{initChatApp();},0xbb8);});
+    </script>
+</body>
+</html>
