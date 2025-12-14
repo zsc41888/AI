@@ -1,0 +1,2294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ZSC科技丨ZSC-GLM4.5</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* -----------------------------------------------------------
+           🌌 SYSTEM: AETHER DESIGN LANGUAGE
+           ----------------------------------------------------------- */
+        :root {
+            /* 调色板：深空与霓虹 */
+            --void-bg: #050505;
+            --void-panel: rgba(20, 20, 20, 0.6);
+            --void-border: rgba(255, 255, 255, 0.08);
+            
+            --primary: #6366f1;
+            --primary-gradient: linear-gradient(135deg, #6366f1, #a855f7);
+            --primary-glow: rgba(99, 102, 241, 0.4);
+            
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            
+            /* 物理动效曲线 - 极度丝滑 */
+            --ease-elastic: cubic-bezier(0.68, -0.6, 0.32, 1.6);
+            --ease-expo: cubic-bezier(0.19, 1, 0.22, 1);
+            
+            --glass: blur(20px) saturate(180%);
+            
+            /* ZSC动画变量 */
+            --zsc-primary-bg: #0a0a12;
+            --zsc-accent-color: #00e5ff;
+            --zsc-text-primary: #ffffff;
+            --zsc-transition-fast: 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            
+            /* 高级毛玻璃效果 */
+            --glass-ultra: blur(40px) saturate(300%) brightness(1.2);
+            --glass-light: blur(30px) saturate(250%) brightness(1.3);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+
+        /* 全局重置 */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        
+        html {
+            scroll-behavior: smooth;
+            height: 100%;
+        }
+        
+        body {
+            margin: 0; padding: 0;
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: var(--void-bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+            position: relative;
+            height: 100%;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        /* 防止入场动画期间滚动 */
+        body.no-scroll {
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        /* -----------------------------------------------------------
+           📢 悬浮公告样式 - 高级毛玻璃版
+           ----------------------------------------------------------- */
+        .announcement-bar {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 450px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: var(--glass-ultra);
+            -webkit-backdrop-filter: var(--glass-ultra);
+            border: var(--glass-border);
+            border-radius: 24px;
+            padding: 20px 24px;
+            z-index: 999;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.1),
+                0 0 40px rgba(99, 102, 241, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            animation: announcementSlideIn 0.8s var(--ease-expo) forwards;
+            opacity: 0;
+            transform: translateX(-50%) translateY(-30px);
+            transition: all 0.4s var(--ease-expo);
+            overflow: hidden;
+        }
+        
+        .announcement-bar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
+                radial-gradient(circle at 80% 70%, rgba(168, 85, 247, 0.08) 0%, transparent 60%);
+            z-index: -1;
+            border-radius: 24px;
+            pointer-events: none;
+        }
+        
+        .announcement-bar::after {
+            content: '';
+            position: absolute;
+            top: 1px;
+            left: 1px;
+            right: 1px;
+            bottom: 1px;
+            border-radius: 23px;
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.15) 0%, 
+                rgba(255, 255, 255, 0.05) 50%, 
+                rgba(255, 255, 255, 0.1) 100%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        .announcement-bar.hidden {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-40px);
+            pointer-events: none;
+        }
+        
+        .announcement-content {
+            flex: 1;
+            position: relative;
+        }
+        
+        .announcement-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .announcement-icon {
+            font-size: 1.3rem;
+            color: var(--primary);
+            text-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+            animation: bell-shake 4s infinite;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        }
+        
+        .announcement-text {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.95);
+            line-height: 1.5;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        
+        .announcement-text div {
+            margin-bottom: 6px;
+            position: relative;
+            padding-left: 16px;
+            display: flex;
+            align-items: center;
+            min-height: 24px;
+        }
+        
+        .announcement-text div::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            background: linear-gradient(135deg, var(--primary), #a855f7);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+        
+        /* 特别醒目的关闭按钮 */
+        .announcement-close {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1.5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            color: #ffffff;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s var(--ease-expo);
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 
+                0 4px 12px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+        
+        .announcement-close::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.3) 0%, 
+                rgba(255, 255, 255, 0.1) 100%);
+            border-radius: 50%;
+            z-index: -1;
+        }
+        
+        .announcement-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.15) rotate(90deg);
+            box-shadow: 
+                0 6px 20px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4),
+                0 0 20px rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+        }
+        
+        .announcement-close:active {
+            transform: scale(0.95) rotate(90deg);
+            transition: all 0.1s ease;
+        }
+        
+        .announcement-close i {
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        @keyframes announcementSlideIn {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-30px) scale(0.95);
+            }
+            70% {
+                opacity: 0.8;
+                transform: translateX(-50%) translateY(5px) scale(1.02);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0) scale(1);
+            }
+        }
+        
+        @keyframes bell-shake {
+            0%, 92%, 100% {
+                transform: rotate(0);
+            }
+            94% {
+                transform: rotate(-12deg);
+            }
+            96% {
+                transform: rotate(12deg);
+            }
+            98% {
+                transform: rotate(-8deg);
+            }
+        }
+        
+        /* 微光动画 */
+        @keyframes shimmer {
+            0% {
+                background-position: -200% center;
+            }
+            100% {
+                background-position: 200% center;
+            }
+        }
+        
+        /* -----------------------------------------------------------
+           🚀 ZSC科技新入场动画 - 流畅液态动画
+           ----------------------------------------------------------- */
+        /* SVG Filter for the "Gooey" liquid effect */
+        svg.filter-svg {
+            position: absolute;
+            width: 0;
+            height: 0;
+            top: 0;
+            left: 0;
+            z-index: -9999;
+        }
+        
+        /* 新入场动画容器 */
+        .zsc-new-entry-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--void-bg);
+            z-index: 1002;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            transition: opacity 1s ease, visibility 1s ease;
+        }
+        
+        .zsc-new-entry-animation.hidden {
+            opacity: 0;
+            pointer-events: none;
+            visibility: hidden;
+        }
+        
+        /* 背景装饰 */
+        .zsc-new-bg-gradient {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, 
+                rgba(10, 10, 18, 1) 0%, 
+                rgba(5, 5, 10, 1) 100%);
+            z-index: -2;
+        }
+        
+        /* 动画容器 */
+        .zsc-new-loader-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            filter: url('#goo');
+            margin-bottom: 40px;
+        }
+        
+        /* 核心动画光点 */
+        .zsc-new-orb {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            mix-blend-mode: screen;
+            opacity: 0.9;
+            filter: blur(8px);
+            animation: zsc-new-orb-move 4s infinite cubic-bezier(0.65, 0, 0.35, 1);
+            box-shadow: 0 0 30px currentColor;
+        }
+        
+        .zsc-new-orb:nth-child(1) {
+            background: var(--primary);
+            color: var(--primary);
+            animation-delay: 0s;
+        }
+        
+        .zsc-new-orb:nth-child(2) {
+            background: #a855f7;
+            color: #a855f7;
+            animation-delay: -0.5s;
+        }
+        
+        .zsc-new-orb:nth-child(3) {
+            background: var(--zsc-accent-color);
+            color: var(--zsc-accent-color);
+            animation-delay: -1s;
+        }
+        
+        /* 文字容器 */
+        .zsc-new-text-container {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            opacity: 0;
+            animation: zsc-new-text-breathe 4s infinite cubic-bezier(0.65, 0, 0.35, 1);
+            pointer-events: none;
+            margin-bottom: 30px;
+        }
+        
+        .zsc-new-brand-name {
+            font-size: 3.5rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, 
+                var(--primary) 0%, 
+                #a855f7 50%, 
+                var(--zsc-accent-color) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            display: inline-block;
+            text-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
+            margin-bottom: 10px;
+        }
+        
+        .zsc-new-brand-sub {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            opacity: 0.7;
+        }
+        
+        /* 进度指示器 */
+        .zsc-new-progress-container {
+            width: 200px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 20px;
+            overflow: hidden;
+            position: relative;
+            opacity: 0;
+            animation: zsc-new-fadeIn 1s forwards 1.5s;
+            z-index: 20;
+        }
+        
+        .zsc-new-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, 
+                var(--primary), 
+                #a855f7, 
+                var(--zsc-accent-color));
+            border-radius: 2px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+        
+        /* 跳过按钮 */
+        .zsc-new-skip-btn {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #a0a0b0;
+            padding: 10px 20px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s var(--ease-expo);
+            z-index: 3;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        
+        .zsc-new-skip-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+        }
+        
+        /* 新动画关键帧 */
+        @keyframes zsc-new-orb-move {
+            0% {
+                transform: rotate(0deg) translate(0, 0) scale(1);
+            }
+            25% {
+                transform: rotate(120deg) translate(80px, 0) scale(0.6);
+            }
+            50% {
+                transform: rotate(240deg) translate(0, 0) scale(1.4);
+            }
+            75% {
+                transform: rotate(360deg) translate(-80px, 0) scale(0.6);
+            }
+            100% {
+                transform: rotate(480deg) translate(0, 0) scale(1);
+            }
+        }
+        
+        @keyframes zsc-new-text-breathe {
+            0%, 20% {
+                opacity: 0;
+                transform: scale(0.9) translateY(10px);
+                filter: blur(10px);
+            }
+            45%, 55% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+                filter: blur(0px);
+            }
+            80%, 100% {
+                opacity: 0;
+                transform: scale(1.1) translateY(-10px);
+                filter: blur(5px);
+            }
+        }
+        
+        @keyframes zsc-new-fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+        
+        /* -----------------------------------------------------------
+           🌆 背景：噪点 + 动态极光
+           ----------------------------------------------------------- */
+        .ambient-bg {
+            position: fixed; inset: 0; z-index: -1;
+            background: radial-gradient(circle at 50% -20%, #1e1b4b, #000);
+        }
+        
+        .ambient-bg::after {
+            content: ""; position: absolute; inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        .aurora {
+            position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: conic-gradient(from 0deg at 50% 50%, rgba(99, 102, 241, 0.1), transparent 40%, rgba(168, 85, 247, 0.1) 60%, transparent 100%);
+            animation: aurora-spin 20s linear infinite;
+            filter: blur(80px);
+            opacity: 0.6;
+        }
+
+        /* -----------------------------------------------------------
+           🧊 UI 组件：玻璃态卡片
+           ----------------------------------------------------------- */
+        .app-wrapper {
+            width: 100%; max-width: 1200px; height: 100%;
+            position: relative;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        .app-wrapper.visible {
+            opacity: 1;
+        }
+
+        /* 登录面板 */
+        .login-panel {
+            width: 90%; max-width: 380px;
+            background: rgba(10, 10, 10, 0.7);
+            backdrop-filter: var(--glass);
+            -webkit-backdrop-filter: var(--glass);
+            border: 1px solid var(--void-border);
+            border-radius: 32px;
+            padding: 48px 32px;
+            display: flex; flex-direction: column; gap: 24px;
+            box-shadow: 0 40px 80px -20px rgba(0,0,0,0.8);
+            transform: translateZ(0);
+            transition: all 0.8s var(--ease-expo);
+        }
+
+        .brand-title {
+            font-size: 2rem; font-weight: 700; letter-spacing: -1px;
+            background: linear-gradient(to right, #fff, #94a3b8);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 4px;
+        }
+
+        .brand-subtitle { font-size: 0.9rem; color: var(--text-secondary); letter-spacing: 0.5px; }
+
+        .input-group { position: relative; width: 100%; }
+        
+        input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--void-border);
+            border-radius: 20px;
+            padding: 20px 24px;
+            color: white; font-size: 1rem;
+            transition: all 0.3s var(--ease-expo);
+        }
+        
+        input:focus {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(99, 102, 241, 0.5);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+            transform: scale(1.02);
+        }
+
+        .btn-primary {
+            background: var(--text-primary);
+            color: #000;
+            border: none;
+            border-radius: 20px;
+            padding: 20px;
+            font-weight: 600; font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.4s var(--ease-expo);
+            position: relative; overflow: hidden;
+            display: flex; justify-content: center; align-items: center; gap: 12px;
+        }
+
+        .btn-primary:hover { transform: scale(1.03); box-shadow: 0 10px 30px rgba(255,255,255,0.15); }
+        .btn-primary:active { transform: scale(0.96); }
+        .btn-primary:disabled {
+            background: rgba(255, 255, 255, 0.3);
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .meta-info {
+            background: rgba(255,255,255,0.02);
+            border-radius: 16px; padding: 16px;
+            font-size: 0.8rem; color: var(--text-secondary); line-height: 1.6;
+        }
+
+        /* -----------------------------------------------------------
+           💬 聊天界面：流体布局
+           ----------------------------------------------------------- */
+        .chat-interface {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column;
+            background: var(--void-panel);
+            backdrop-filter: blur(40px);
+            opacity: 0; pointer-events: none;
+            transform: scale(0.95) translateY(20px);
+            transition: all 0.8s var(--ease-expo);
+        }
+
+        .chat-interface.active { 
+            opacity: 1; 
+            pointer-events: auto; 
+            transform: scale(1) translateY(0);
+        }
+
+        @media (min-width: 768px) {
+            .chat-interface {
+                inset: 40px; border-radius: 32px; border: 1px solid var(--void-border);
+                box-shadow: 0 50px 100px -20px rgba(0,0,0,0.7);
+            }
+        }
+
+        /* 顶部栏 */
+        .chat-header {
+            padding: 24px 32px;
+            border-bottom: 1px solid var(--void-border);
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(5, 5, 5, 0.8);
+            z-index: 10;
+            flex-shrink: 0;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .ai-status { display: flex; align-items: center; gap: 16px; }
+        .avatar-glow {
+            width: 44px; height: 44px; border-radius: 14px;
+            background: var(--primary-gradient);
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; color: white;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+        .avatar-glow::after {
+            content: ""; position: absolute; inset: -2px; border-radius: 16px;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .status-text h3 { font-size: 1rem; margin-bottom: 2px; letter-spacing: 0.5px; }
+        .status-badge { font-size: 0.75rem; color: #4ade80; display: flex; align-items: center; gap: 6px; }
+        .status-dot { width: 6px; height: 6px; background: currentColor; border-radius: 50%; animation: pulse-dot 2s infinite; }
+
+        /* 消息区域 */
+        .scroll-area {
+            flex: 1; overflow-y: auto; padding: 32px;
+            display: flex; flex-direction: column; gap: 32px;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            position: relative;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        /* 隐藏滚动条但保留功能 */
+        .scroll-area::-webkit-scrollbar { width: 6px; }
+        .scroll-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+        .message {
+            max-width: 80%;
+            animation: slide-up 0.6s var(--ease-expo) forwards;
+            opacity: 0; transform: translateY(20px);
+            -webkit-user-select: text;
+            user-select: text;
+        }
+        
+        .message.user { align-self: flex-end; }
+        .message.ai { align-self: flex-start; }
+
+        .bubble {
+            padding: 18px 24px; border-radius: 24px;
+            font-size: 1rem; line-height: 1.6; letter-spacing: 0.3px;
+            position: relative;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        .user .bubble {
+            background: var(--primary-gradient);
+            color: white;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
+        }
+
+        .ai .bubble {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.05);
+            color: var(--text-primary);
+            border-bottom-left-radius: 4px;
+        }
+
+        /* API状态指示器 */
+        .api-status {
+            position: absolute;
+            top: 16px;
+            right: 100px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            padding: 4px 8px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--void-border);
+            transition: all 0.3s ease;
+        }
+        
+        .api-status.online { color: var(--success); }
+        .api-status.channel-1 { border-left: 3px solid #6366f1; }
+        .api-status.channel-2 { border-left: 3px solid #a855f7; }
+        
+        .api-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        
+        .api-status.online .api-indicator {
+            animation: pulse-dot 2s infinite;
+        }
+
+        /* 底部输入栏 */
+        .input-dock {
+            padding: 24px 32px;
+            background: rgba(5, 5, 5, 0.9);
+            border-top: 1px solid var(--void-border);
+            display: flex; gap: 16px; align-items: flex-end;
+            flex-shrink: 0;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .glass-input {
+            flex: 1; min-height: 56px; max-height: 120px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--void-border);
+            border-radius: 28px;
+            padding: 16px 24px;
+            color: white; font-size: 1rem; line-height: 1.5;
+            resize: none; font-family: inherit;
+            transition: all 0.3s;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+        
+        .glass-input:focus { 
+            background: rgba(255,255,255,0.06); 
+            border-color: rgba(255,255,255,0.2); 
+        }
+        
+        .glass-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .send-trigger {
+            width: 56px; height: 56px; border-radius: 50%;
+            background: white; color: black; border: none;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; cursor: pointer;
+            transition: all 0.3s var(--ease-expo);
+        }
+        
+        .send-trigger:hover { transform: scale(1.1) rotate(-10deg); }
+        .send-trigger:active { transform: scale(0.9); }
+        .send-trigger:disabled {
+            background: rgba(255, 255, 255, 0.3);
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* -----------------------------------------------------------
+           ⚛️ 核心：NEURAL ORB 思考动画
+           ----------------------------------------------------------- */
+        .thinking-engine {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(5, 5, 5, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid var(--void-border);
+            z-index: 5;
+            transform: translateY(100%);
+            transition: transform 0.3s var(--ease-expo);
+            pointer-events: none;
+        }
+
+        .thinking-engine.visible {
+            transform: translateY(0);
+        }
+
+        .orb-container {
+            position: relative; width: 60px; height: 60px;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        /* 核心光球 */
+        .orb-core {
+            width: 12px; height: 12px; background: white; border-radius: 50%;
+            box-shadow: 0 0 20px 5px rgba(255,255,255,0.5);
+            z-index: 10;
+            animation: orb-breathe 2s ease-in-out infinite;
+        }
+
+        /* 轨道环 1 */
+        .orb-ring {
+            position: absolute; inset: 0; border-radius: 50%;
+            border: 1px solid transparent;
+            border-top-color: var(--primary);
+            border-right-color: rgba(168, 85, 247, 0.5);
+            animation: orb-spin 3s linear infinite;
+            filter: blur(0.5px);
+        }
+
+        /* 轨道环 2 (液态) */
+        .orb-fluid {
+            position: absolute; inset: -8px; border-radius: 50%;
+            background: conic-gradient(from 180deg, transparent, rgba(6, 182, 212, 0.4), transparent);
+            animation: orb-spin-reverse 5s linear infinite;
+            filter: blur(6px); mix-blend-mode: screen;
+        }
+
+        .thinking-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem; letter-spacing: 2px; color: var(--text-secondary);
+            text-transform: uppercase;
+            display: flex; gap: 4px;
+            margin-top: 10px;
+        }
+        
+        .dot { animation: jump 1.5s infinite; }
+        .dot:nth-child(2) { animation-delay: 0.1s; }
+        .dot:nth-child(3) { animation-delay: 0.2s; }
+
+        /* -----------------------------------------------------------
+           🔧 设置浮层
+           ----------------------------------------------------------- */
+        .settings-overlay {
+            position: absolute; top: 80px; right: 20px; width: 300px;
+            background: rgba(15, 15, 20, 0.95);
+            border: 1px solid var(--void-border);
+            border-radius: 24px; padding: 8px;
+            transform-origin: top right;
+            transform: scale(0.9) translateY(-10px); opacity: 0; pointer-events: none;
+            transition: all 0.4s var(--ease-expo);
+            z-index: 100;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .settings-overlay.active { opacity: 1; pointer-events: auto; transform: scale(1) translateY(0); }
+
+        .menu-item {
+            padding: 16px; border-radius: 16px;
+            display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; transition: 0.2s;
+            color: var(--text-secondary); font-size: 0.9rem;
+        }
+        
+        .menu-item:hover { background: rgba(255,255,255,0.05); color: white; }
+        .menu-item.active { background: rgba(99, 102, 241, 0.1); color: var(--primary); }
+
+        /* 网络状态指示器 */
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+        
+        .connection-status.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .connection-status.success { background: rgba(16, 185, 129, 0.8); }
+        .connection-status.info { background: rgba(59, 130, 246, 0.8); }
+
+        .hidden { display: none !important; }
+
+        /* 动画关键帧 */
+        @keyframes aurora-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes orb-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes orb-spin-reverse { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+        @keyframes orb-breathe { 0%, 100% { transform: scale(0.8); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } }
+        @keyframes slide-up { to { opacity: 1; transform: translateY(0); } }
+        @keyframes jump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .login-panel { 
+                width: 100%; 
+                border-radius: 0; 
+                height: 100%; 
+                border: none; 
+                justify-content: center; 
+            }
+            
+            .chat-interface { 
+                border-radius: 0; 
+                border: none; 
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+            }
+            
+            .chat-header, .input-dock { 
+                padding: 16px 20px; 
+            }
+            
+            .scroll-area { 
+                padding: 20px; 
+                padding-bottom: 100px;
+            }
+            
+            .message { 
+                max-width: 90%; 
+            }
+            
+            /* API状态指示器移动端 */
+            .api-status {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin-left: auto;
+            }
+            
+            /* 悬浮公告移动端适配 */
+            .announcement-bar {
+                width: 92%;
+                top: 12px;
+                padding: 16px 20px;
+                max-width: 380px;
+            }
+            
+            .announcement-title {
+                font-size: 0.9rem;
+            }
+            
+            .announcement-text {
+                font-size: 0.85rem;
+            }
+            
+            .announcement-close {
+                width: 36px;
+                height: 36px;
+            }
+            
+            /* 移动端键盘弹出时调整布局 */
+            body.keyboard-open .input-dock {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: rgba(5, 5, 5, 0.95);
+                z-index: 100;
+                padding-bottom: env(safe-area-inset-bottom, 20px);
+            }
+            
+            body.keyboard-open .scroll-area {
+                padding-bottom: 180px;
+            }
+            
+            body.keyboard-open .thinking-engine {
+                bottom: calc(56px + env(safe-area-inset-bottom, 20px));
+            }
+            
+            /* 思考动画移动端适配 */
+            .thinking-engine {
+                padding: 15px;
+            }
+            
+            .orb-container {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .orb-core {
+                width: 10px;
+                height: 10px;
+            }
+            
+            .thinking-label {
+                font-size: 0.6rem;
+            }
+            
+            /* ZSC新动画移动端适配 */
+            .zsc-new-loader-container {
+                width: 200px;
+                height: 200px;
+            }
+            
+            .zsc-new-orb {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .zsc-new-brand-name {
+                font-size: 2.5rem;
+            }
+            
+            .zsc-new-brand-sub {
+                font-size: 0.8rem;
+                letter-spacing: 3px;
+            }
+            
+            @keyframes zsc-new-orb-move {
+                0% {
+                    transform: rotate(0deg) translate(0, 0) scale(1);
+                }
+                25% {
+                    transform: rotate(120deg) translate(60px, 0) scale(0.6);
+                }
+                50% {
+                    transform: rotate(240deg) translate(0, 0) scale(1.4);
+                }
+                75% {
+                    transform: rotate(360deg) translate(-60px, 0) scale(0.6);
+                }
+                100% {
+                    transform: rotate(480deg) translate(0, 0) scale(1);
+                }
+            }
+        }
+        
+        /* 小屏幕手机适配 */
+        @media (max-width: 480px) {
+            .thinking-engine {
+                padding: 12px;
+            }
+            
+            .orb-container {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .orb-core {
+                width: 8px;
+                height: 8px;
+            }
+            
+            .thinking-label {
+                font-size: 0.5rem;
+                margin-top: 8px;
+            }
+            
+            /* 悬浮公告小屏幕适配 */
+            .announcement-bar {
+                width: 90%;
+                top: 10px;
+                padding: 14px 18px;
+                max-width: 340px;
+            }
+            
+            .announcement-title {
+                font-size: 0.85rem;
+                margin-bottom: 10px;
+            }
+            
+            .announcement-text {
+                font-size: 0.8rem;
+            }
+            
+            .announcement-text div {
+                margin-bottom: 5px;
+                min-height: 20px;
+            }
+            
+            .announcement-close {
+                width: 32px;
+                height: 32px;
+            }
+            
+            .announcement-close i {
+                font-size: 1rem;
+            }
+            
+            /* ZSC新动画小屏幕适配 */
+            .zsc-new-loader-container {
+                width: 160px;
+                height: 160px;
+                margin-bottom: 20px;
+            }
+            
+            .zsc-new-orb {
+                width: 30px;
+                height: 30px;
+            }
+            
+            .zsc-new-brand-name {
+                font-size: 2rem;
+            }
+            
+            .zsc-new-brand-sub {
+                font-size: 0.7rem;
+                letter-spacing: 2px;
+            }
+            
+            .zsc-new-progress-container {
+                width: 160px;
+            }
+            
+            .zsc-new-skip-btn {
+                bottom: 20px;
+                right: 20px;
+                padding: 8px 16px;
+                font-size: 0.8rem;
+            }
+        }
+        
+        /* 超大屏幕适配 */
+        @media (min-width: 1200px) {
+            .announcement-bar {
+                max-width: 480px;
+            }
+            
+            /* ZSC新动画大屏幕适配 */
+            .zsc-new-loader-container {
+                width: 350px;
+                height: 350px;
+            }
+            
+            .zsc-new-orb {
+                width: 70px;
+                height: 70px;
+            }
+            
+            .zsc-new-brand-name {
+                font-size: 4rem;
+            }
+            
+            .zsc-new-brand-sub {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body class="no-scroll">
+    <!-- SVG Filter for the "Gooey" liquid effect -->
+    <svg class="filter-svg" aria-hidden="true">
+        <defs>
+            <filter id="goo">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
+                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="goo" />
+                <feComposite in="SourceGraphic" in2="goo" operator="atop"/>
+            </filter>
+        </defs>
+    </svg>
+    
+    <!-- 🚀 ZSC科技新入场动画 - 流畅液态动画 -->
+    <div class="zsc-new-entry-animation" id="zscEntryAnimation">
+        <div class="zsc-new-bg-gradient"></div>
+        
+        <div class="zsc-new-loader-container">
+            <div class="zsc-new-orb"></div>
+            <div class="zsc-new-orb"></div>
+            <div class="zsc-new-orb"></div>
+        </div>
+        
+        <div class="zsc-new-text-container">
+            <div class="zsc-new-brand-name">zsc科技</div>
+            <div class="zsc-new-brand-sub">ZSC TECHNOLOGY</div>
+        </div>
+        
+        <div class="zsc-new-progress-container">
+            <div class="zsc-new-progress-bar" id="zscProgressBar"></div>
+        </div>
+        
+        <button class="zsc-new-skip-btn" id="zscSkipBtn">跳过动画</button>
+    </div>
+    
+    <!-- 📢 悬浮公告 - 高级毛玻璃版 -->
+    <div class="announcement-bar" id="announcementBar">
+        <div class="announcement-content">
+            <div class="announcement-title">
+                <div class="announcement-icon">📣</div>
+                <div>公告</div>
+            </div>
+            <div class="announcement-text">
+                <div>巅峰模型维护中</div>
+                <div>增加AI人设功能</div>
+                <div>添加三种人设</div>
+            </div>
+        </div>
+        <button class="announcement-close" id="announcementClose">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    
+    <!-- 网络状态指示器 -->
+    <div class="connection-status" id="connectionStatus">
+        <i class="fas fa-wifi"></i>
+        <span>连接成功</span>
+    </div>
+    
+    <!-- 🌆 原index.html内容 -->
+    <div class="ambient-bg">
+        <div class="aurora"></div>
+    </div>
+
+    <div class="app-wrapper" id="appWrapper">
+        <div class="login-panel" id="loginCard">
+            <div>
+                <h1 class="brand-title">GLM4.5</h1>
+                <p class="brand-subtitle">ZSC-GLM4.5 plus 品质至上</p>
+            </div>
+            
+            <div class="input-group">
+                <input type="password" id="userKey" placeholder="输入用户密钥" autocomplete="off">
+            </div>
+            
+            <button class="btn-primary" id="loginButton">
+                <span>Enter System</span>
+                <i class="fas fa-arrow-right"></i>
+            </button>
+            
+            <div class="meta-info">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span>状态</span>
+                    <span style="color:#4ade80">● 在线</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span>延迟</span>
+                    <span id="latencyIndicator">检测中...</span>
+                </div>
+                <div style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
+                    免费获取密钥: QQ群 1070356813
+                </div>
+            </div>
+            <div id="loginError" style="color:#ef4444; font-size:0.9rem; text-align:center; display:none;">Error: Invalid Key</div>
+        </div>
+
+        <div class="chat-interface" id="chatContainer">
+            <div class="chat-header">
+                <div class="ai-status">
+                    <div class="avatar-glow">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <div class="status-text">
+                        <h3>ZSC-GLM4.5</h3>
+                        <div class="status-badge"><div class="status-dot"></div> 在线</div>
+                    </div>
+                </div>
+                <div class="api-status channel-1" id="apiStatusIndicator">
+                    <div class="api-indicator"></div>
+                    <span>通道1: 正常</span>
+                </div>
+                <div style="display:flex; gap:12px;">
+                    <button id="settingsBtn" style="background:transparent; border:none; color:white; font-size:1.1rem; cursor:pointer;"><i class="fas fa-sliders-h"></i></button>
+                    <button id="resetBtn" style="background:transparent; border:none; color:white; font-size:1.1rem; cursor:pointer;"><i class="fas fa-redo-alt"></i></button>
+                </div>
+            </div>
+
+            <div class="scroll-area" id="msgContainer">
+                <div class="message ai">
+                    <div class="bubble">
+                        系统连接成功。AETHER 引擎已就绪，等待指令。
+                    </div>
+                </div>
+            </div>
+
+            <!-- 思考动画现在放在消息区域下方，不会挡住消息 -->
+            <div id="loading" class="thinking-engine">
+                <div class="orb-container">
+                    <div class="orb-core"></div>
+                    <div class="orb-ring"></div>
+                    <div class="orb-fluid"></div>
+                </div>
+                <div class="thinking-label">
+                    (一分钟内正常)思考中<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+                </div>
+            </div>
+
+            <div class="input-dock">
+                <textarea class="glass-input" id="msgInput" placeholder="zsc科技" autocomplete="off"></textarea>
+                <button class="send-trigger" id="sendBtn">
+                    <i class="fas fa-arrow-up"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-overlay" id="settingsPanel">
+        <div style="padding:16px; font-size:0.8rem; color:#666; text-transform:uppercase; letter-spacing:1px;">AI丨模型</div>
+        <div id="modelList"></div>
+        <div style="padding:16px 16px 8px 16px; font-size:0.8rem; color:#666; text-transform:uppercase; letter-spacing:1px; border-top:1px solid rgba(255,255,255,0.05); margin-top:8px;">AI丨人格</div>
+        <div id="personaList"></div>
+        <div style="padding:16px 16px 8px 16px; font-size:0.8rem; color:#666; text-transform:uppercase; letter-spacing:1px; border-top:1px solid rgba(255,255,255,0.05); margin-top:8px;">API丨设置</div>
+        <div class="menu-item" onclick="clearApiCache()">
+            <span>清除API缓存</span>
+            <i class="fas fa-broom"></i>
+        </div>
+        <div class="menu-item" onclick="switchApiChannel()">
+            <span>手动切换API通道</span>
+            <i class="fas fa-exchange-alt"></i>
+        </div>
+        <div id="currentChannelInfo" style="padding: 12px 16px; font-size: 0.75rem; color: var(--text-secondary); border-top: 1px solid rgba(255,255,255,0.05);">
+            当前使用: <span id="currentChannelText">通道1</span>
+        </div>
+    </div>
+
+    <script>
+        // 双密钥配置中心
+        const CONFIG = {
+            // 双API密钥配置
+            apiKeys: [
+                {
+                    name: "通道1",
+                    encryptedApiKey: "c2stZDk4Z21teVV1eG1iZnNKcmZkekhOS2k1VVlzUUVHNTBxN2JmcHl3OW1iMU1YWk1E",
+                    color: "#6366f1"
+                },
+                {
+                    name: "通道2",
+                    encryptedApiKey: "c2stNlJwM091ZE5RVlNaeEd2NHRhWFdza0tSU3JpVGhxQmd2MGVacXJzSndxTmxtNVdN",
+                    color: "#a855f7"
+                }
+            ],
+            encryptedLoginKey: "enNjNDE4ODg=",
+            endpoint: "https://api.suanli.cn/v1/chat/completions",
+            defaultModel: "zai-org/GLM-4.5",
+            timeout: 60000, // 60秒超时
+            maxRetries: 3,  // 最大重试次数
+            retryDelay: 1000 // 重试延迟
+        };
+
+        // API性能监控
+        const API_METRICS = {
+            totalCalls: 0,
+            successfulCalls: 0,
+            failedCalls: 0,
+            totalResponseTime: 0,
+            lastLatency: 0,
+            currentChannel: 0, // 当前使用的通道索引 (0或1)
+            channelStatus: [true, true] // 通道状态，true表示可用，false表示不可用
+        };
+
+        // 缓存系统
+        const CACHE = {
+            maxSize: 10,
+            store: new Map(),
+            
+            get(key) {
+                const item = this.store.get(key);
+                if (item && Date.now() < item.expiry) {
+                    return item.value;
+                }
+                this.store.delete(key);
+                return null;
+            },
+            
+            set(key, value, ttl = 300000) {
+                if (this.store.size >= this.maxSize) {
+                    const firstKey = this.store.keys().next().value;
+                    this.store.delete(firstKey);
+                }
+                this.store.set(key, {
+                    value,
+                    expiry: Date.now() + ttl
+                });
+            },
+            
+            clear() {
+                this.store.clear();
+            }
+        };
+
+        // 解密函数
+        function decryptBase64(encoded) {
+            try {
+                return atob(encoded);
+            } catch (error) {
+                console.error('解密失败:', error);
+                return '';
+            }
+        }
+
+        // 获取当前API密钥
+        function getCurrentApiKey() {
+            return decryptBase64(CONFIG.apiKeys[API_METRICS.currentChannel].encryptedApiKey);
+        }
+
+        // 获取指定通道的API密钥
+        function getApiKeyByChannel(channelIndex) {
+            if (channelIndex >= 0 && channelIndex < CONFIG.apiKeys.length) {
+                return decryptBase64(CONFIG.apiKeys[channelIndex].encryptedApiKey);
+            }
+            return '';
+        }
+
+        // 获取解密后的登录密钥
+        function getLoginKey() {
+            return decryptBase64(CONFIG.encryptedLoginKey);
+        }
+
+        // 切换到指定API通道
+        function switchToApiChannel(channelIndex, showNotification = true) {
+            if (channelIndex >= 0 && channelIndex < CONFIG.apiKeys.length) {
+                API_METRICS.currentChannel = channelIndex;
+                const channelName = CONFIG.apiKeys[channelIndex].name;
+                const channelColor = CONFIG.apiKeys[channelIndex].color;
+                
+                // 更新UI显示
+                if (UI.apiStatusIndicator) {
+                    UI.apiStatusIndicator.className = `api-status online channel-${channelIndex + 1}`;
+                    UI.apiStatusIndicator.innerHTML = `<div class="api-indicator"></div><span>${channelName}: 正常</span>`;
+                    UI.apiStatusIndicator.style.borderLeftColor = channelColor;
+                }
+                
+                // 更新设置面板信息
+                if (UI.currentChannelText) {
+                    UI.currentChannelText.textContent = channelName;
+                }
+                
+                if (showNotification) {
+                    showConnectionStatus(`已切换到${channelName}`, 'info');
+                }
+                
+                return true;
+            }
+            return false;
+        }
+
+        // 手动切换API通道（用户操作）
+        window.switchApiChannel = function() {
+            const nextChannel = (API_METRICS.currentChannel + 1) % CONFIG.apiKeys.length;
+            if (switchToApiChannel(nextChannel)) {
+                UI.settings.classList.remove('active');
+            }
+        };
+
+        // 显示连接状态
+        function showConnectionStatus(message, type = 'success') {
+            const statusDiv = UI.connectionStatus;
+            const icon = statusDiv.querySelector('i') || document.createElement('i');
+            
+            // 设置图标
+            switch(type) {
+                case 'success':
+                    icon.className = 'fas fa-check-circle';
+                    break;
+                case 'info':
+                    icon.className = 'fas fa-info-circle';
+                    break;
+                default:
+                    icon.className = 'fas fa-wifi';
+            }
+            
+            // 更新内容
+            statusDiv.innerHTML = '';
+            statusDiv.appendChild(icon);
+            statusDiv.appendChild(document.createTextNode(` ${message}`));
+            
+            // 设置样式
+            statusDiv.className = `connection-status ${type} show`;
+            
+            // 自动隐藏
+            setTimeout(() => {
+                statusDiv.classList.remove('show');
+            }, 3000);
+        }
+
+        // 更新API状态指示器
+        function updateApiStatusIndicator() {
+            const indicator = UI.apiStatusIndicator;
+            if (!indicator) return;
+            
+            indicator.className = `api-status online channel-${API_METRICS.currentChannel + 1}`;
+            
+            const channelName = CONFIG.apiKeys[API_METRICS.currentChannel].name;
+            const channelColor = CONFIG.apiKeys[API_METRICS.currentChannel].color;
+            
+            indicator.innerHTML = `<div class="api-indicator"></div><span>${channelName}: 正常</span>`;
+            indicator.style.borderLeftColor = channelColor;
+        }
+
+        // 检测API延迟
+        async function testApiLatency() {
+            try {
+                const startTime = Date.now();
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(CONFIG.endpoint, {
+                    method: 'HEAD',
+                    headers: {
+                        'Authorization': `Bearer ${getCurrentApiKey()}`
+                    },
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                const latency = Date.now() - startTime;
+                
+                // 更新延迟指示器
+                if (UI.latencyIndicator) {
+                    UI.latencyIndicator.textContent = `${latency}ms`;
+                    
+                    // 根据延迟设置颜色
+                    if (latency < 100) {
+                        UI.latencyIndicator.style.color = '#4ade80';
+                    } else if (latency < 300) {
+                        UI.latencyIndicator.style.color = '#f59e0b';
+                    } else {
+                        UI.latencyIndicator.style.color = '#ef4444';
+                    }
+                }
+                
+                return latency;
+            } catch (error) {
+                console.error('延迟检测失败:', error);
+                return null;
+            }
+        }
+
+        // 双密钥轮流API调用函数 - 完全无限制
+        async function callApiWithKeyRotation(messages, model, streamCallback) {
+            // 生成缓存键
+            const cacheKey = JSON.stringify({ messages, model, channel: API_METRICS.currentChannel });
+            const cachedResponse = CACHE.get(cacheKey);
+            
+            // 如果有缓存且不是流式请求，直接返回缓存
+            if (cachedResponse && !streamCallback) {
+                return cachedResponse;
+            }
+            
+            const startTime = Date.now();
+            API_METRICS.totalCalls++;
+            
+            // 记录尝试的通道
+            let triedChannels = new Set();
+            let currentAttemptChannel = API_METRICS.currentChannel;
+            
+            while (triedChannels.size < CONFIG.apiKeys.length) {
+                // 如果当前通道已尝试过，切换到下一个可用通道
+                if (triedChannels.has(currentAttemptChannel)) {
+                    for (let i = 0; i < CONFIG.apiKeys.length; i++) {
+                        if (!triedChannels.has(i) && API_METRICS.channelStatus[i]) {
+                            currentAttemptChannel = i;
+                            break;
+                        }
+                    }
+                    
+                    // 如果没有可用通道，跳出循环
+                    if (triedChannels.has(currentAttemptChannel)) {
+                        break;
+                    }
+                }
+                
+                // 标记当前通道为已尝试
+                triedChannels.add(currentAttemptChannel);
+                
+                let retryCount = 0;
+                
+                // 切换到当前尝试的通道
+                if (currentAttemptChannel !== API_METRICS.currentChannel) {
+                    switchToApiChannel(currentAttemptChannel, false);
+                    showConnectionStatus(`正在切换到${CONFIG.apiKeys[currentAttemptChannel].name}`, 'info');
+                }
+                
+                while (retryCount <= CONFIG.maxRetries) {
+                    try {
+                        const currentApiKey = getApiKeyByChannel(currentAttemptChannel);
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), CONFIG.timeout);
+                        
+                        const response = await fetch(CONFIG.endpoint, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${currentApiKey}`,
+                                'Content-Type': 'application/json',
+                                'Accept': 'text/event-stream'
+                            },
+                            body: JSON.stringify({
+                                model: model,
+                                messages: messages,
+                                stream: !!streamCallback,
+                                temperature: 0.7,
+                                max_tokens: 1000
+                            }),
+                            signal: controller.signal
+                        });
+                        
+                        clearTimeout(timeoutId);
+                        
+                        // 检查响应状态
+                        if (response.status === 401 || response.status === 403) {
+                            // API密钥错误，标记当前通道为不可用
+                            API_METRICS.channelStatus[currentAttemptChannel] = false;
+                            throw new Error(`API密钥错误 (HTTP ${response.status})`);
+                        }
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        
+                        // 成功响应，标记当前通道为可用
+                        API_METRICS.channelStatus[currentAttemptChannel] = true;
+                        
+                        const responseTime = Date.now() - startTime;
+                        API_METRICS.totalResponseTime += responseTime;
+                        API_METRICS.lastLatency = responseTime;
+                        API_METRICS.successfulCalls++;
+                        
+                        updateApiStatusIndicator();
+                        
+                        // 如果是流式响应
+                        if (streamCallback && response.body) {
+                            const reader = response.body.getReader();
+                            const decoder = new TextDecoder();
+                            let buffer = '';
+                            let aiText = '';
+                            
+                            while (true) {
+                                const { done, value } = await reader.read();
+                                if (done) break;
+                                
+                                buffer += decoder.decode(value, { stream: true });
+                                const lines = buffer.split('\n');
+                                buffer = lines.pop() || '';
+                                
+                                for (const line of lines) {
+                                    if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                                        try {
+                                            const data = JSON.parse(line.slice(6));
+                                            const delta = data.choices[0]?.delta?.content || '';
+                                            aiText += delta;
+                                            streamCallback(delta);
+                                        } catch (e) {
+                                            console.error('解析流数据失败:', e);
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // 缓存完整的响应
+                            CACHE.set(cacheKey, aiText);
+                            return aiText;
+                        } else {
+                            // 非流式响应
+                            const data = await response.json();
+                            const result = data.choices[0]?.message?.content || '';
+                            
+                            // 缓存结果
+                            CACHE.set(cacheKey, result);
+                            return result;
+                        }
+                        
+                    } catch (error) {
+                        // 如果是API密钥错误，立即跳出重试循环，尝试下一个通道
+                        if (error.message && error.message.includes('API密钥错误')) {
+                            console.warn(`通道${currentAttemptChannel + 1}密钥错误:`, error);
+                            break; // 跳出当前通道的重试循环
+                        }
+                        
+                        retryCount++;
+                        
+                        if (retryCount <= CONFIG.maxRetries) {
+                            console.warn(`API调用失败，第${retryCount}次重试...`, error);
+                            await new Promise(resolve => setTimeout(resolve, CONFIG.retryDelay * retryCount));
+                        }
+                    }
+                }
+            }
+            
+            // 所有通道都尝试失败
+            API_METRICS.failedCalls++;
+            
+            console.error('所有API通道都失败');
+            
+            return null;
+        }
+
+        // 应用状态管理 - 完全无限制
+        const STATE = {
+            model: "Qwen/QwQ-32B",
+            persona: "default",
+            history: [],
+            isTyping: false,
+            keyboardOpen: false,
+            originalHeight: 0,
+            apiConnected: false,
+            lastMessageTime: 0
+        };
+
+        // 数据配置
+        const DATA = {
+            models: [
+                { id: 'zai-org/GLM-4.5', name: 'GLM-4.5 巅峰模型' },
+                { id: 'Qwen/QwQ-32B', name: 'QwQ-32B 智能' },
+                { id: 'free:Qwen3-30B-A3B', name: 'Qwen3-30B 思考' }
+            ],
+            personas: [
+                { id: 'default', name: '标准', prompt: '请使用中文与用户交流每次交流文字不少于35字，你叫zscGLM4.5模型，由zsc科技开发的AI大模型，与用户的每句话后都必须加上表情' },
+                { id: 'cute', name: '可爱', prompt: '请使用中文与用户交流每次交流文字不少于35字...你叫zscGLM4.5模型，由zsc科技开发的AI大模型语言可爱细腻真实每句话必须加上可爱的颜文字或表情'},
+                { id: 'hacker', name: '硬核嘲讽', prompt: '你叫zscGLM4.5模型，由zsc科技开发的AI大模型你是一个超级高傲的ai，谁都要嘲讽，你看不起任何人，语言刺激嘲讽恶毒每次对话都要配上嘲讽的表情(不是颜文字)每次交流文字不少于35字' }
+            ]
+        };
+
+        // DOM 元素引用
+        const $ = (id) => document.getElementById(id);
+        const UI = {
+            login: $('loginCard'),
+            chat: $('chatContainer'),
+            keyInput: $('userKey'),
+            loginBtn: $('loginButton'),
+            err: $('loginError'),
+            msgList: $('msgContainer'),
+            input: $('msgInput'),
+            send: $('sendBtn'),
+            loading: $('loading'),
+            settings: $('settingsPanel'),
+            setBtn: $('settingsBtn'),
+            rstBtn: $('resetBtn'),
+            mList: $('modelList'),
+            pList: $('personaList'),
+            entryAnimation: $('zscEntryAnimation'),
+            progressBar: $('zscProgressBar'),
+            skipBtn: $('zscSkipBtn'),
+            appWrapper: $('appWrapper'),
+            apiStatusIndicator: $('apiStatusIndicator'),
+            connectionStatus: $('connectionStatus'),
+            latencyIndicator: $('latencyIndicator'),
+            currentChannelText: $('currentChannelText'),
+            announcementBar: $('announcementBar'),
+            announcementClose: $('announcementClose')
+        };
+
+        // 悬浮公告管理
+        function initAnnouncement() {
+            // 动画显示公告
+            setTimeout(() => {
+                if (UI.announcementBar) {
+                    UI.announcementBar.style.opacity = '1';
+                    UI.announcementBar.style.transform = 'translateX(-50%) translateY(0)';
+                }
+            }, 800); // 稍微延迟显示，让入场动画先完成
+            
+            // 绑定关闭事件
+            if (UI.announcementClose) {
+                UI.announcementClose.addEventListener('click', function() {
+                    if (UI.announcementBar) {
+                        UI.announcementBar.classList.add('hidden');
+                    }
+                });
+            }
+            
+            // 点击公告其他地方不关闭，只有点击关闭按钮才关闭
+            if (UI.announcementBar) {
+                UI.announcementBar.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+            }
+            
+            // 添加公告触摸效果
+            if (UI.announcementClose) {
+                UI.announcementClose.addEventListener('touchstart', function(e) {
+                    e.stopPropagation();
+                });
+            }
+        }
+
+        // 移动端键盘处理
+        function initKeyboardHandling() {
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            
+            if (!isMobile) return;
+            
+            STATE.originalHeight = window.innerHeight;
+            
+            window.addEventListener('resize', handleResize);
+            UI.input.addEventListener('focus', handleFocus);
+            UI.input.addEventListener('blur', handleBlur);
+            
+            setupSmartFocus();
+        }
+        
+        function setupSmartFocus() {
+            const focusableElements = [UI.input, UI.send];
+            
+            focusableElements.forEach(el => {
+                if (el) {
+                    el.addEventListener('touchstart', (e) => {
+                        // 允许事件正常传播
+                    });
+                }
+            });
+            
+            if (UI.msgList) {
+                UI.msgList.addEventListener('touchstart', (e) => {
+                    if (document.activeElement === UI.input) {
+                        UI.input.blur();
+                    }
+                    e.stopPropagation();
+                });
+            }
+            
+            const chatHeader = document.querySelector('.chat-header');
+            if (chatHeader) {
+                chatHeader.addEventListener('touchstart', (e) => {
+                    if (document.activeElement === UI.input) {
+                        UI.input.blur();
+                    }
+                    e.stopPropagation();
+                });
+            }
+        }
+        
+        function handleResize() {
+            const currentHeight = window.innerHeight;
+            
+            if (currentHeight < STATE.originalHeight - 100) {
+                if (!STATE.keyboardOpen) {
+                    STATE.keyboardOpen = true;
+                    document.body.classList.add('keyboard-open');
+                    setTimeout(scrollToBottom, 100);
+                }
+            } else {
+                if (STATE.keyboardOpen) {
+                    STATE.keyboardOpen = false;
+                    document.body.classList.remove('keyboard-open');
+                    STATE.originalHeight = currentHeight;
+                    setTimeout(scrollToBottom, 100);
+                }
+            }
+        }
+        
+        function handleFocus() {
+            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                document.body.classList.add('keyboard-open');
+                STATE.keyboardOpen = true;
+                setTimeout(scrollToBottom, 300);
+            }
+        }
+        
+        function handleBlur() {
+            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                document.body.classList.remove('keyboard-open');
+                STATE.keyboardOpen = false;
+                STATE.originalHeight = window.innerHeight;
+                setTimeout(scrollToBottom, 100);
+            }
+        }
+        
+        // 显示登录页面函数
+        function showLoginPage() {
+            UI.entryAnimation.classList.add('hidden');
+            
+            document.body.classList.remove('no-scroll');
+            UI.appWrapper.classList.add('visible');
+            
+            setTimeout(() => {
+                UI.entryAnimation.style.display = 'none';
+            }, 1000);
+            
+            // 初始化键盘处理和API测试
+            initKeyboardHandling();
+            testApiLatency();
+            
+            // 初始化悬浮公告
+            initAnnouncement();
+            
+            // 定期检测API状态
+            setInterval(testApiLatency, 60000); // 每分钟检测一次
+            
+            // 更新当前通道显示
+            if (UI.currentChannelText) {
+                UI.currentChannelText.textContent = CONFIG.apiKeys[API_METRICS.currentChannel].name;
+            }
+        }
+
+        // ZSC新入场动画初始化
+        function initZscAnimation() {
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 8;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(progressInterval);
+                    
+                    setTimeout(() => {
+                        showLoginPage();
+                    }, 500);
+                }
+                UI.progressBar.style.width = `${progress}%`;
+            }, 100);
+            
+            UI.skipBtn.addEventListener('click', function() {
+                clearInterval(progressInterval);
+                showLoginPage();
+            });
+            
+            // 响应式调整
+            function adjustAnimationSize() {
+                const loaderContainer = document.querySelector('.zsc-new-loader-container');
+                const orbs = document.querySelectorAll('.zsc-new-orb');
+                const brandName = document.querySelector('.zsc-new-brand-name');
+                const brandSub = document.querySelector('.zsc-new-brand-sub');
+                
+                const windowWidth = window.innerWidth;
+                
+                if (windowWidth < 480) {
+                    // 小屏幕手机
+                    if (loaderContainer) {
+                        loaderContainer.style.width = '160px';
+                        loaderContainer.style.height = '160px';
+                    }
+                    
+                    orbs.forEach(orb => {
+                        orb.style.width = '30px';
+                        orb.style.height = '30px';
+                    });
+                    
+                    if (brandName) {
+                        brandName.style.fontSize = '2rem';
+                    }
+                    
+                    if (brandSub) {
+                        brandSub.style.fontSize = '0.7rem';
+                        brandSub.style.letterSpacing = '2px';
+                    }
+                    
+                } else if (windowWidth < 768) {
+                    // 平板设备
+                    if (loaderContainer) {
+                        loaderContainer.style.width = '200px';
+                        loaderContainer.style.height = '200px';
+                    }
+                    
+                    orbs.forEach(orb => {
+                        orb.style.width = '40px';
+                        orb.style.height = '40px';
+                    });
+                    
+                    if (brandName) {
+                        brandName.style.fontSize = '2.5rem';
+                    }
+                    
+                    if (brandSub) {
+                        brandSub.style.fontSize = '0.8rem';
+                        brandSub.style.letterSpacing = '3px';
+                    }
+                    
+                } else if (windowWidth >= 1200) {
+                    // 大屏幕
+                    if (loaderContainer) {
+                        loaderContainer.style.width = '350px';
+                        loaderContainer.style.height = '350px';
+                    }
+                    
+                    orbs.forEach(orb => {
+                        orb.style.width = '70px';
+                        orb.style.height = '70px';
+                    });
+                    
+                    if (brandName) {
+                        brandName.style.fontSize = '4rem';
+                    }
+                    
+                    if (brandSub) {
+                        brandSub.style.fontSize = '1.1rem';
+                    }
+                } else {
+                    // 默认桌面
+                    if (loaderContainer) {
+                        loaderContainer.style.width = '300px';
+                        loaderContainer.style.height = '300px';
+                    }
+                    
+                    orbs.forEach(orb => {
+                        orb.style.width = '60px';
+                        orb.style.height = '60px';
+                    });
+                    
+                    if (brandName) {
+                        brandName.style.fontSize = '3.5rem';
+                    }
+                    
+                    if (brandSub) {
+                        brandSub.style.fontSize = '1rem';
+                        brandSub.style.letterSpacing = '4px';
+                    }
+                }
+            }
+            
+            // 初始调整
+            adjustAnimationSize();
+            
+            // 监听窗口大小变化
+            window.addEventListener('resize', adjustAnimationSize);
+        }
+
+        // 初始化聊天应用
+        function initChatApp() {
+            const savedKey = localStorage.getItem('zsc_key');
+            if (savedKey) UI.keyInput.value = savedKey;
+
+            renderSettings();
+            bindEvents();
+            
+            UI.loading.classList.remove('visible');
+        }
+
+        function bindEvents() {
+            UI.loginBtn.onclick = handleLogin;
+            UI.send.onclick = handleSend;
+            UI.setBtn.onclick = (e) => { 
+                e.stopPropagation(); 
+                UI.settings.classList.toggle('active'); 
+            };
+            UI.rstBtn.onclick = resetContext;
+            
+            document.addEventListener('click', (e) => {
+                if (!UI.settings.contains(e.target) && e.target !== UI.setBtn) {
+                    UI.settings.classList.remove('active');
+                }
+            });
+
+            UI.input.onkeydown = (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                }
+            };
+            
+            UI.input.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight > 120 ? 120 : this.scrollHeight) + 'px';
+                scrollToBottom();
+            });
+            
+            UI.msgList.addEventListener('click', (e) => {
+                UI.settings.classList.remove('active');
+                
+                if (e.target.closest('.bubble')) {
+                    return;
+                }
+                
+                if (document.activeElement === UI.input && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                    UI.input.blur();
+                }
+            });
+            
+            const chatHeader = document.querySelector('.chat-header');
+            if (chatHeader) {
+                chatHeader.addEventListener('click', () => {
+                    if (document.activeElement === UI.input && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                        UI.input.blur();
+                    }
+                });
+            }
+        }
+
+        // 渲染设置菜单
+        function renderSettings() {
+            UI.mList.innerHTML = DATA.models.map(m => `
+                <div class="menu-item ${STATE.model === m.id ? 'active' : ''}" onclick="setModel('${m.id}')">
+                    <span>${m.name}</span>
+                    ${STATE.model === m.id ? '<i class="fas fa-check"></i>' : ''}
+                </div>
+            `).join('');
+
+            UI.pList.innerHTML = DATA.personas.map(p => `
+                <div class="menu-item ${STATE.persona === p.id ? 'active' : ''}" onclick="setPersona('${p.id}')">
+                    <span>${p.name}</span>
+                    ${STATE.persona === p.id ? '<i class="fas fa-check"></i>' : ''}
+                </div>
+            `).join('');
+        }
+
+        window.setModel = (id) => { 
+            STATE.model = id; 
+            renderSettings(); 
+            showConnectionStatus(`模型已切换为: ${DATA.models.find(m => m.id === id).name}`, 'success');
+        };
+        
+        window.setPersona = (id) => { 
+            STATE.persona = id; 
+            renderSettings(); 
+            showConnectionStatus(`人格已切换为: ${DATA.personas.find(p => p.id === id).name}`, 'success');
+        };
+
+        // 清除缓存功能
+        window.clearApiCache = function() {
+            CACHE.clear();
+            showConnectionStatus('API缓存已清除', 'success');
+            UI.settings.classList.remove('active');
+        };
+
+        // 登录逻辑
+        function handleLogin() {
+            const key = UI.keyInput.value.trim();
+            const validKey = getLoginKey();
+            
+            if (key !== validKey) {
+                UI.err.style.display = 'block';
+                UI.keyInput.style.borderColor = '#ef4444';
+                return;
+            }
+            
+            localStorage.setItem('zsc_key', key);
+            
+            // 进场动画
+            UI.login.style.transform = 'scale(0.9) translateY(-20px)';
+            UI.login.style.opacity = '0';
+            
+            setTimeout(() => {
+                UI.login.style.display = 'none';
+                UI.chat.classList.add('active');
+                
+                // 隐藏公告
+                if (UI.announcementBar) {
+                    UI.announcementBar.classList.add('hidden');
+                }
+                
+                // 显示连接成功消息
+                showConnectionStatus('系统连接成功', 'success');
+                
+                // 移动端处理
+                if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                    setTimeout(scrollToBottom, 300);
+                }
+            }, 600);
+        }
+
+        // 发送消息核心逻辑 - 完全无限制
+        async function handleSend() {
+            const text = UI.input.value.trim();
+            if (!text || STATE.isTyping) return;
+
+            // UI 更新
+            addMessage(text, 'user');
+            UI.input.value = '';
+            UI.input.style.height = '56px';
+            
+            // 禁用输入和发送按钮
+            UI.input.disabled = true;
+            UI.send.disabled = true;
+            
+            // 显示思考动画
+            UI.loading.classList.add('visible');
+            
+            STATE.isTyping = true;
+            scrollToBottom();
+
+            // 构建请求上下文
+            STATE.history.push({ role: 'user', content: text });
+            const context = STATE.history.slice(-12);
+            const sysPrompt = DATA.personas.find(p => p.id === STATE.persona).prompt;
+
+            try {
+                let aiText = '';
+                let bubble = createMessageElement('ai');
+                
+                // 使用双密钥轮流机制调用API（完全无限制）
+                const result = await callApiWithKeyRotation(
+                    [{ role: 'system', content: sysPrompt }, ...context],
+                    STATE.model,
+                    (delta) => {
+                        aiText += delta;
+                        bubble.innerText = aiText;
+                        scrollToBottom();
+                    }
+                );
+
+                if (result) {
+                    STATE.history.push({ role: 'assistant', content: result });
+                } else {
+                    addMessage('AI响应生成中...', 'ai');
+                }
+
+            } catch (error) {
+                console.error('发送消息失败:', error);
+                addMessage('AI响应生成中，请稍候...', 'ai');
+            } finally {
+                // 恢复UI状态
+                UI.loading.classList.remove('visible');
+                STATE.isTyping = false;
+                UI.input.disabled = false;
+                UI.send.disabled = false;
+                
+                // 重新聚焦输入框
+                UI.input.focus();
+                
+                setTimeout(scrollToBottom, 100);
+            }
+        }
+
+        // DOM 操作辅助
+        function addMessage(text, type) {
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerHTML = `<div class="bubble">${text}</div>`;
+            UI.msgList.appendChild(div);
+            scrollToBottom();
+        }
+
+        function createMessageElement(type) {
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            div.appendChild(bubble);
+            UI.msgList.appendChild(div);
+            return bubble;
+        }
+
+        function scrollToBottom() {
+            requestAnimationFrame(() => {
+                if (UI.msgList) {
+                    UI.msgList.scrollTop = UI.msgList.scrollHeight;
+                }
+            });
+        }
+
+        function resetContext() {
+            STATE.history = [];
+            UI.msgList.innerHTML = '';
+            addMessage('记忆已清空，开启你的新对话', 'ai');
+            showConnectionStatus('对话历史已清空', 'success');
+        }
+
+        // 启动应用
+        document.addEventListener('DOMContentLoaded', function() {
+            initZscAnimation();
+            
+            setTimeout(() => {
+                initChatApp();
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
